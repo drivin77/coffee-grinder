@@ -74,8 +74,7 @@ namespace BoggleGame
             bool[,] visited
             )
         {
-            var curChar = board[j, i];
-            currentWord.Append(curChar.Equals('q') ? "qu" : "q");
+            currentWord.Append(board[j, i]);
 
             // quick exit case if the current string isn't a word
             var curWordStr = currentWord.ToString();
