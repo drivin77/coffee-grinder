@@ -19,11 +19,17 @@ namespace BoggleGame.Dictionary
                 _fileStream = new StreamReader(fileName);
             }
 
-            catch (Exception e)
+            catch (FileNotFoundException)
             {
-                Console.WriteLine("The file could not be read:");
-                Console.WriteLine(e.Message);
+                throw new Exception(
+                    String.Format(
+                        "Dictionary file couldn't be found ('{0}').  " +
+                        "The dictionary file must reside in the same directory as the executable.",
+                        fileName
+                    )
+                );
             }
+            
         }
 
         /// <summary>

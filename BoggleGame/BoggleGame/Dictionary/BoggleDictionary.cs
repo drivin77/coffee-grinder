@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using BoggleGame.DataStructures;
 
 namespace BoggleGame.Dictionary
@@ -19,7 +20,7 @@ namespace BoggleGame.Dictionary
         {
             _wordTrie = new TST();
 
-            var df = new DictionaryFile("ospd.txt");
+            var df = new DictionaryFile(Path.Combine(Directory.GetCurrentDirectory(), "ospd.txt"));
 
             foreach (var word in df.Words)
             {

@@ -11,17 +11,12 @@ namespace BoggleGame
     /// </summary>
     internal class BoggleGame
     {
-        private static readonly BoggleDictionary Diction = new BoggleDictionary();
+        private static BoggleDictionary _diction;
 
-        private static readonly ArrayList WordsFound = new ArrayList();
+        private static ArrayList _wordsFound;
 
         private static void Main(string[] args)
         {
-       
-          //  char[,] board = { { 'y', 'o', 'x', 'm' }, { 'r', 'b', 'a', 'n' }, { 'v', 'e', 'd', 's' }, {'c', 'f', 'g', 'h'} };
-            char[,] board = { { 'y', 'o', 'x', 's', 't' }, { 'r', 'b', 'a', 'c', 'l' }, { 'v', 'e', 'd', 'm', 'j' }, { 'm', 'd', 'f', 'g', 'n' }, { 'b', 'd', 'x', 'y', 'q' } };
-          //  char[,] board = { { 'd', 'e' }, { 'a', 'f' } };
-
             if (args.Length != 2 || (args.Length == 1 && args[0].Equals("?")))
             {
                 Console.WriteLine("Usage: BoggleGame <dimension> <board>");
@@ -41,18 +36,30 @@ namespace BoggleGame
                 var dimension = Int32.Parse(args[0]);
                 var boardInput = args[1];
 
+                _diction = new BoggleDictionary();
+                _wordsFound = new ArrayList();
+
                 var theBoard = new BoggleBoard(dimension, boardInput);
                 theBoard.PrintBoard();
-                /*
-                FindWords(board, board.GetLength(0), board.GetLength(1));
+                
+                FindWords(theBoard);
 
-                // sort words found to make output neater
-                WordsFound.Sort();
-
-                foreach (var word in WordsFound)
+                if (_wordsFound.Count > 0)
                 {
-                    Console.WriteLine(word);
-                }*/
+                    // sort words found to make output neater
+                    _wordsFound.Sort();
+
+                    foreach (var word in _wordsFound)
+                    {
+                        Console.WriteLine(word);
+                    }
+                }
+
+                else
+                {
+                    Console.WriteLine("No words found!");
+                }
+                
             }
             catch (Exception e)
             {
@@ -66,7 +73,7 @@ namespace BoggleGame
         /// <param name="key">string to check dictionary for</param>
         private static void IsWord(string key)
         {
-            var isWord = Diction.IsWord(key);
+            var isWord = _diction.IsWord(key);
             Console.WriteLine("Is {0} a word? {1}", key, (isWord) ? "yes" : "no");
         }
 
@@ -75,11 +82,12 @@ namespace BoggleGame
         /// strings from those letters and checking if they are words or could potentially
         /// become words.
         /// </summary>
-        /// <param name="board">the board.  Doesn't change</param>
-        /// <param name="width">the board width.  Doesn't change.</param>
-        /// <param name="height">the board height.  Doesn't change.</param>
-        private static void FindWords(char[,] board, int width, int height)
+        /// <param name="theBoard">The BoggleBoard object to search for words in</param>
+        private static void FindWords(BoggleBoard theBoard)
         {
+            var height = theBoard.Dimension;
+            var width = theBoard.Dimension;
+
             for (var j = 0; j < height; ++j)
             {
                 for (var i = 0; i < width; ++i)
@@ -87,13 +95,13 @@ namespace BoggleGame
                     // bool array gets initialized with default bool value of 'false'
                     var visited = new bool[width, height];
 
-                    FindWordsRecursive(board, i, j, width, height, new StringBuilder(), visited);
+                    FindWordsRecursive(theBoard, i, j, width, height, new StringBuilder(), visited);
                 }
             }
         }
 
         private static void FindWordsRecursive(
-            char[,] board,
+            BoggleBoard board,
             int i,
             int j,
             int width,
@@ -106,15 +114,15 @@ namespace BoggleGame
 
             // quick exit case if the current string isn't a word
             var curWordStr = currentWord.ToString();
-            if (!Diction.IsStartOfWord(curWordStr))
+            if (!_diction.IsStartOfWord(curWordStr))
             {
                 currentWord.Remove(currentWord.Length - 1, 1);
                 visited[j, i] = false;
                 return;
             }
 
-            if (Diction.IsWord(curWordStr))
-                WordsFound.Add(curWordStr);
+            if (_diction.IsWord(curWordStr))
+                _wordsFound.Add(curWordStr);
 
             visited[j, i] = true;
 
