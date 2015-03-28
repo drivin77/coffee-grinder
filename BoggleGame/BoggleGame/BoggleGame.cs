@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Text;
 using BoggleGame.Dictionary;
+using BoggleGame.Game;
 
 namespace BoggleGame
 {
@@ -20,15 +21,23 @@ namespace BoggleGame
           //  char[,] board = { { 'y', 'o', 'x', 'm' }, { 'r', 'b', 'a', 'n' }, { 'v', 'e', 'd', 's' }, {'c', 'f', 'g', 'h'} };
             char[,] board = { { 'y', 'o', 'x', 's', 't' }, { 'r', 'b', 'a', 'c', 'l' }, { 'v', 'e', 'd', 'm', 'j' }, { 'm', 'd', 'f', 'g', 'n' }, { 'b', 'd', 'x', 'y', 'q' } };
           //  char[,] board = { { 'd', 'e' }, { 'a', 'f' } };
-           
-            FindWords(board, board.GetLength(0), board.GetLength(1));
-            
-            // sort words found to make output neater
-            WordsFound.Sort();
 
-            foreach (var word in WordsFound)
+            try
             {
-                Console.WriteLine(word);
+                var theBoard = new BoggleBoard(3, "yoxrbavdd");
+                FindWords(board, board.GetLength(0), board.GetLength(1));
+
+                // sort words found to make output neater
+                WordsFound.Sort();
+
+                foreach (var word in WordsFound)
+                {
+                    Console.WriteLine(word);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
             }
         }
 
