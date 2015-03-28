@@ -22,9 +22,28 @@ namespace BoggleGame
             char[,] board = { { 'y', 'o', 'x', 's', 't' }, { 'r', 'b', 'a', 'c', 'l' }, { 'v', 'e', 'd', 'm', 'j' }, { 'm', 'd', 'f', 'g', 'n' }, { 'b', 'd', 'x', 'y', 'q' } };
           //  char[,] board = { { 'd', 'e' }, { 'a', 'f' } };
 
+            if (args.Length != 2 || (args.Length == 1 && args[0].Equals("?")))
+            {
+                Console.WriteLine("Usage: BoggleGame <dimension> <board>");
+                Console.WriteLine(" ");
+                Console.WriteLine("  <dimension>  a positive integer value representing a dimension x dimension board.");
+                Console.WriteLine("  <board>      a string representing the board.  Append all subsequent rows to the first row.");
+                Console.WriteLine("               Ex: If the board dimension is 2 and the letters are");
+                Console.WriteLine("               | a b |");
+                Console.WriteLine("               | c d |");
+                Console.WriteLine("               then board will be 'abcd'");
+
+                return;
+            }
+
             try
             {
-                var theBoard = new BoggleBoard(3, "yoxrbavdd");
+                var dimension = Int32.Parse(args[0]);
+                var boardInput = args[1];
+
+                var theBoard = new BoggleBoard(dimension, boardInput);
+                theBoard.PrintBoard();
+                /*
                 FindWords(board, board.GetLength(0), board.GetLength(1));
 
                 // sort words found to make output neater
@@ -33,7 +52,7 @@ namespace BoggleGame
                 foreach (var word in WordsFound)
                 {
                     Console.WriteLine(word);
-                }
+                }*/
             }
             catch (Exception e)
             {

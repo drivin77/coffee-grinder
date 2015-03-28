@@ -47,8 +47,36 @@ namespace BoggleGame.Game
         /// </summary>
         private readonly bool[] _letterSeen;
 
+        public void PrintBoard()
+        {
+            for (var i = 0; i < Dimension; ++i)
+            {
+                for (var j = 0; j < Dimension; ++j)
+                {
+                    if (j == 0)
+                        Console.Write("| ");
+
+                    Console.Write(_board[i, j] + " ");
+                    
+                    if (j == Dimension - 1)
+                        Console.Write("|");
+                    
+                    
+                }
+
+                Console.WriteLine();
+            }
+        }
+
         public BoggleBoard(int dimension, String board)
         {
+            // is board null, empty, or only whitespace?
+            if (String.IsNullOrWhiteSpace(board))
+                throw new ArgumentException(
+                    "The board passed in is empty or consists of only empty characters.",
+                    "board"
+                );
+
             // bounds check 
             // dimension * dimension == board.Length
             if ((dimension * dimension != board.Length))
@@ -60,13 +88,6 @@ namespace BoggleGame.Game
                          board
                     ),
                     "dimension"
-                );
-
-            // is board null, empty, or only whitespace?
-            if (String.IsNullOrWhiteSpace(board))
-                throw new ArgumentException(
-                    "The board passed in is empty or consists of only empty characters.",
-                    "board"
                 );
 
             Dimension = dimension;
