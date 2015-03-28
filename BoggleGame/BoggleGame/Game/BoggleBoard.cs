@@ -41,12 +41,6 @@ namespace BoggleGame.Game
         // | (1,0)  (1,1) |
         private readonly String[,] _board;
 
-        /// <summary>
-        /// A mapping of the lower case letters a-z to a 26 length array
-        /// to quickly determine if a letter is duplicated
-        /// </summary>
-        private readonly bool[] _letterSeen;
-
         public void PrintBoard()
         {
             for (var i = 0; i < Dimension; ++i)
@@ -94,9 +88,11 @@ namespace BoggleGame.Game
 
             // init board memory
             _board = new string[dimension, dimension];
-
+               
+            // A mapping of the lower case letters a-z to a 26 length array
+            // to quickly determine if a letter is duplicated.
             // auto-initializes to false
-            _letterSeen = new bool[26];
+            var letterSeen = new bool[26];
 
             var lowerCaseBoard = board.ToLower();
 
@@ -118,7 +114,7 @@ namespace BoggleGame.Game
 
                     // check for duplicate letter
                     var zeroToTwentyFive = curChar - 97;
-                    if (_letterSeen[zeroToTwentyFive])
+                    if (letterSeen[zeroToTwentyFive])
                         throw new ArgumentException(
                             String.Format(
                                 "Duplicate letter ('{0}') found in board, which isn't allowed.",
@@ -126,7 +122,7 @@ namespace BoggleGame.Game
                             )
                         );
 
-                    _letterSeen[zeroToTwentyFive] = true;
+                    letterSeen[zeroToTwentyFive] = true;
 
                     _board[i, j] = (curChar.Equals('q')) ? "qu" : curChar.ToString();
                 }
