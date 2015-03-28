@@ -9,7 +9,7 @@ namespace BoggleGame
     /// <summary>
     /// Main boggle game class
     /// </summary>
-    internal class BoggleGame
+    internal static class BoggleGame
     {
         private static BoggleDictionary _diction;
 
@@ -116,7 +116,7 @@ namespace BoggleGame
             var curWordStr = currentWord.ToString();
             if (!_diction.IsStartOfWord(curWordStr))
             {
-                currentWord.Remove(currentWord.Length - 1, 1);
+                RemoveChars(board[j, i], ref currentWord);
                 visited[j, i] = false;
                 return;
             }
@@ -158,8 +158,15 @@ namespace BoggleGame
             if (i - 1 >= 0 && j + 1 < height && !visited[j + 1, i - 1])
                 FindWordsRecursive(board, i - 1, j + 1, width, height, currentWord, visited);
 
-            currentWord.Remove(currentWord.Length - 1, 1);
+            // "rewind" the state to continue searching
+            RemoveChars(board[j,i], ref currentWord);
             visited[j, i] = false;
+        }
+
+        private static void RemoveChars(String curChar, ref StringBuilder currentWord)
+        {
+            var removeChars = (curChar.Equals("qu")) ? 2 : 1;
+            currentWord.Remove(currentWord.Length - removeChars, removeChars);
         }
     }
 }
