@@ -41,7 +41,19 @@ namespace BoggleGame.Dictionary
             foreach (var word in df.Words)
             {
                 if (word.Length >= 3)
-                    _wordTrie.Put(word);
+                {
+                    try
+                    {
+                        _wordTrie.Put(word);
+                    }
+                    catch (ArgumentException e)
+                    {
+                        var message = "Unacceptable word found in dictionary file. " +
+                                      "See inner-exception for details.";
+                        throw new ArgumentException(message, e);
+                    }
+                }
+                    
             }
         }
 

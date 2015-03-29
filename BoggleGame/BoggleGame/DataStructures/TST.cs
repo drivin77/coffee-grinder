@@ -123,9 +123,6 @@ namespace BoggleGame.DataStructures
             if (String.IsNullOrWhiteSpace(key))
                 throw new ArgumentException();
 
-            if (_root != null && Get(key)) 
-                return;
-
             ++NumElements;
             _root = Put(_root, key, 0);
         }
@@ -152,7 +149,7 @@ namespace BoggleGame.DataStructures
 
             else if (idx < key.Length - 1)
                 root.MiddleChild = Put(root.MiddleChild, key, idx + 1);
-
+ 
             else
                 root.Value = 0;
 
