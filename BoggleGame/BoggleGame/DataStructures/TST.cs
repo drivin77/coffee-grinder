@@ -23,7 +23,7 @@ namespace BoggleGame.DataStructures
     public class TST
     {
         private Node _root;
-        public UInt32 NumElements { get; set; }
+        public UInt32 NumElements { get; private set; }
 
         /// <summary>
         /// Object type for each node in the trie
@@ -44,11 +44,8 @@ namespace BoggleGame.DataStructures
         /// <returns>true if the characters exist as part of a key, false otherwise.</returns>
         public bool IsStartOfKey(String prefix)
         {
-            if (prefix == null)
-                throw new ArgumentNullException("prefix");
-
-            if (prefix.Length == 0)
-                throw new ArgumentException("String can't be zero length!");
+            if (String.IsNullOrWhiteSpace(prefix))
+                return false;
 
             var getNode = Get(_root, prefix, 0);
 
@@ -64,11 +61,8 @@ namespace BoggleGame.DataStructures
         /// <returns>true if key exists, false otherwise</returns>
         public bool Get (String key)
         {
-            if (key == null)
-                throw new ArgumentNullException("key");
-
-            if (key.Length == 0)
-                throw new ArgumentException("String can't be zero length!");
+            if (String.IsNullOrWhiteSpace(key))
+                return false;
 
             var getNode = Get(_root, key, 0);
 
@@ -82,19 +76,30 @@ namespace BoggleGame.DataStructures
 
         private Node Get (Node root, String key, Int32 idx)
         {
-            if (key == null)
-                throw new ArgumentNullException("key");
-
-            if (key.Length == 0)
-                throw new ArgumentException("String can't be zero length!");
+            if (String.IsNullOrWhiteSpace(key))
+                return null;
 
             if (idx >= key.Length)
-                throw new ArgumentOutOfRangeException("idx", "idx is bigger than the length of the string");
+                throw new ArgumentOutOfRangeException(
+                    "idx",
+                    "idx is bigger than the length of the string"
+                );
 
             if (root == null)
                 return null;
 
             var curChar = key[idx];
+
+            if (!Char.IsLetter(curChar))
+            {
+                throw new ArgumentException(
+                    String.Format(
+                        "non-alphabetic character found in search key ({0})",
+                        key
+                    ),
+                "key");
+            }
+
 
             if (curChar < root.Ch)
                 return Get(root.LeftChild, key, idx);

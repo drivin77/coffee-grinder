@@ -8,7 +8,7 @@ namespace BoggleGame.Dictionary
     /// Opens file on disk containing dictionary words (one per line)
     /// and exposes functionality to retrieve each word.
     /// 
-    /// Once the DictionaryFile has been iterated through, it shouldn't be used again;
+    /// Once the DictionaryFile has been iterated through, it can't be used again;
     /// create a new DictionaryFile if needed.
     /// </summary>
     public class DictionaryFile

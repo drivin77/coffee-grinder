@@ -7,7 +7,10 @@ namespace BoggleGame.Dictionary
     /// <summary>
     /// The dictionary.
     /// Rules:
-    /// Words must be 3 characters or longer, so we'll only store 3 letter or greater words
+    /// - We'll use the Official Scrabble Player's Dictionary (ospd.txt) as our dictionary, which is 
+    ///   also suitable as a Boggle official dictionary (according to Wikipedia).
+    /// - Words must be 3 characters or longer, so we'll only store 3 letter or greater words.  This
+    ///   will save us space in the data structure.
     /// </summary>
     public class BoggleDictionary
     {
@@ -25,7 +28,15 @@ namespace BoggleGame.Dictionary
         {
             _wordTrie = new TST();
 
-            var df = new DictionaryFile(Path.Combine(Directory.GetCurrentDirectory(), "ospd.txt"));
+            // ospd.txt is copied into the executable directory on 
+            // successful compile to path Dictionary/ospd.txt.
+            // GetCurrentDirectory() will return us the exe path.
+            var df = new DictionaryFile(
+                Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "Dictionary",
+                    "ospd.txt")
+                );
 
             foreach (var word in df.Words)
             {
@@ -45,6 +56,13 @@ namespace BoggleGame.Dictionary
             return testString.Length > 1 && _wordTrie.Get(testString);
         }
 
+        /// <summary>
+        /// Is prefix the start of a valid word?  Will be useful for
+        /// iterating through the Boggle board and quickly exiting a
+        /// search path if we know it's not a word.
+        /// </summary>
+        /// <param name="prefix">String to check for potential word existance</param>
+        /// <returns>true if prefix could be a word, false otherwise</returns>
         public bool IsStartOfWord(String prefix)
         {
             return _wordTrie.IsStartOfKey(prefix);
