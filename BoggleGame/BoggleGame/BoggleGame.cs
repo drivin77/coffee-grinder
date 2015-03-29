@@ -60,6 +60,7 @@ namespace BoggleGame
                     // ArrayList uses QuickSort, so no concern with speed of sort.
                     _wordsFound.Sort();
 
+                    Console.WriteLine(String.Format("{0} words found.", _wordsFound.Count));
                     foreach (var word in _wordsFound)
                     {
                         Console.WriteLine(word);
