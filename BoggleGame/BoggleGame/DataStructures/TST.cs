@@ -115,6 +115,9 @@ namespace BoggleGame.DataStructures
         /// <param name="key">string to be inserted</param>
         public void Put (String key)
         {
+            if (String.IsNullOrWhiteSpace(key))
+                throw new ArgumentException();
+
             if (_root != null && Get(key)) 
                 return;
 
@@ -125,6 +128,13 @@ namespace BoggleGame.DataStructures
         private static Node Put (Node root, String key, Int32 idx)
         {
             var curChar = key[idx];
+
+            if (! Char.IsLetter(curChar))
+                throw new ArgumentException(
+                    String.Format(
+                        "Can't add a key with non-alphabetic characters ({0})", key),
+                        "key"
+                    );
 
             if (root == null)
                 root = new Node {Ch = curChar};

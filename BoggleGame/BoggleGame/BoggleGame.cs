@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Text;
+using BoggleGame.DataStructures;
 using BoggleGame.Dictionary;
 using BoggleGame.Game;
 
@@ -8,12 +9,20 @@ namespace BoggleGame
 {
     /// <summary>
     /// Main boggle game class
+    /// Rules:
+    /// - Using standard Boggle word find rules.  No variant rules.
     /// </summary>
     internal static class BoggleGame
     {
         private static BoggleDictionary _diction;
 
         private static ArrayList _wordsFound;
+
+        /// <summary>
+        /// keep a TST around to quickly look up words we've found
+        /// so we don't store duplicates.
+        /// </summary>
+        private static TST _duplicateTrie;
 
         private static void Main(string[] args)
         {
@@ -38,6 +47,7 @@ namespace BoggleGame
 
                 _diction = new BoggleDictionary();
                 _wordsFound = new ArrayList();
+                _duplicateTrie = new TST();
 
                 var theBoard = new BoggleBoard(dimension, boardInput);
                 theBoard.PrintBoard();
@@ -46,7 +56,8 @@ namespace BoggleGame
 
                 if (_wordsFound.Count > 0)
                 {
-                    // sort words found to make output neater
+                    // sort words found to make output neater.
+                    // ArrayList uses QuickSort, so no concern with speed of sort.
                     _wordsFound.Sort();
 
                     foreach (var word in _wordsFound)
@@ -65,16 +76,6 @@ namespace BoggleGame
             {
                 Console.WriteLine(e.Message);
             }
-        }
-
-        /// <summary>
-        /// helper function which writes to stdout whether or not key exists in dictionary
-        /// </summary>
-        /// <param name="key">string to check dictionary for</param>
-        private static void IsWord(string key)
-        {
-            var isWord = _diction.IsWord(key);
-            Console.WriteLine("Is {0} a word? {1}", key, (isWord) ? "yes" : "no");
         }
 
         /// <summary>
@@ -116,14 +117,21 @@ namespace BoggleGame
             var curWordStr = currentWord.ToString();
             if (!_diction.IsStartOfWord(curWordStr))
             {
-                RemoveChars(board[j, i], ref currentWord);
+                RemoveChars(board[j, i], currentWord);
                 visited[j, i] = false;
                 return;
             }
 
             if (_diction.IsWord(curWordStr))
-                _wordsFound.Add(curWordStr);
-
+            {
+                // check for duplicates and ignore the word if we've already seen it
+                if (!_duplicateTrie.Get(curWordStr))
+                {
+                    _wordsFound.Add(curWordStr);
+                    _duplicateTrie.Put(curWordStr);
+                }
+            }
+                
             visited[j, i] = true;
 
             // left
@@ -159,11 +167,11 @@ namespace BoggleGame
                 FindWordsRecursive(board, i - 1, j + 1, width, height, currentWord, visited);
 
             // "rewind" the state to continue searching
-            RemoveChars(board[j,i], ref currentWord);
+            RemoveChars(board[j,i], currentWord);
             visited[j, i] = false;
         }
 
-        private static void RemoveChars(String curChar, ref StringBuilder currentWord)
+        private static void RemoveChars(String curChar, StringBuilder currentWord)
         {
             var removeChars = (curChar.Equals("qu")) ? 2 : 1;
             currentWord.Remove(currentWord.Length - removeChars, removeChars);

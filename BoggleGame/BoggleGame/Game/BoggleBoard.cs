@@ -3,12 +3,11 @@
 namespace BoggleGame.Game
 {
     /// <summary>
-    /// Represents the board.
+    /// Represents the board and the rules of the board.
     /// Rules:
     /// - board must be n x n dimensions.  
-    /// - there are no repeated letters allowed in the board.
-    /// - the char 'q' when defining the board will represent 'qu'
-    /// - board only contains letters, no special characters, non-letter characters, or whitespace!
+    /// - the char 'q' when defining the board will represent 'qu', but only takes up one spot on the board.
+    /// - board only contains letters: no special characters, non-letter characters, or whitespace!
     /// - all characters on the board will be stored in lower case (converted if not already)
     /// </summary>
     public class BoggleBoard
@@ -53,9 +52,7 @@ namespace BoggleGame.Game
                     Console.Write(_board[i, j] + " ");
                     
                     if (j == Dimension - 1)
-                        Console.Write("|");
-                    
-                    
+                        Console.Write("|");                   
                 }
 
                 Console.WriteLine();
@@ -88,11 +85,6 @@ namespace BoggleGame.Game
 
             // init board memory
             _board = new string[dimension, dimension];
-               
-            // A mapping of the lower case letters a-z to a 26 length array
-            // to quickly determine if a letter is duplicated.
-            // auto-initializes to false
-            var letterSeen = new bool[26];
 
             var lowerCaseBoard = board.ToLower();
 
@@ -102,8 +94,10 @@ namespace BoggleGame.Game
             {
                 for (var j = 0; j < dimension; ++j)
                 {
+                    // convert from 2d -> 1d
                     var stringIndex = i * dimension + j;
                     var curChar = lowerCaseBoard[stringIndex];
+
                     if (! Char.IsLetter(curChar))
                         throw new ArgumentException(
                             String.Format(
@@ -111,18 +105,6 @@ namespace BoggleGame.Game
                                 curChar
                             ),
                             board);
-
-                    // check for duplicate letter
-                    var zeroToTwentyFive = curChar - 97;
-                    if (letterSeen[zeroToTwentyFive])
-                        throw new ArgumentException(
-                            String.Format(
-                                "Duplicate letter ('{0}') found in board, which isn't allowed.",
-                                curChar
-                            )
-                        );
-
-                    letterSeen[zeroToTwentyFive] = true;
 
                     _board[i, j] = (curChar.Equals('q')) ? "qu" : curChar.ToString();
                 }

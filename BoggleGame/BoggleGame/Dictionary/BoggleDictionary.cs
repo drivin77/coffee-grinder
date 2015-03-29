@@ -4,6 +4,11 @@ using BoggleGame.DataStructures;
 
 namespace BoggleGame.Dictionary
 {
+    /// <summary>
+    /// The dictionary.
+    /// Rules:
+    /// Words must be 3 characters or longer, so we'll only store 3 letter or greater words
+    /// </summary>
     public class BoggleDictionary
     {
         private readonly TST _wordTrie;
@@ -24,7 +29,8 @@ namespace BoggleGame.Dictionary
 
             foreach (var word in df.Words)
             {
-                _wordTrie.Put(word);
+                if (word.Length >= 3)
+                    _wordTrie.Put(word);
             }
         }
 

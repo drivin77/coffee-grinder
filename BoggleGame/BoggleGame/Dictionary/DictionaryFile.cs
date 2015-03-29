@@ -7,6 +7,9 @@ namespace BoggleGame.Dictionary
     /// <summary>
     /// Opens file on disk containing dictionary words (one per line)
     /// and exposes functionality to retrieve each word.
+    /// 
+    /// Once the DictionaryFile has been iterated through, it shouldn't be used again;
+    /// create a new DictionaryFile if needed.
     /// </summary>
     public class DictionaryFile
     {
@@ -21,10 +24,9 @@ namespace BoggleGame.Dictionary
 
             catch (FileNotFoundException)
             {
-                throw new Exception(
+                throw new FileNotFoundException(
                     String.Format(
-                        "Dictionary file couldn't be found ('{0}').  " +
-                        "The dictionary file must reside in the same directory as the executable.",
+                        "Dictionary file couldn't be found ('{0}').",
                         fileName
                     )
                 );
