@@ -39,6 +39,8 @@ namespace BoggleGame
                 Console.WriteLine("               | c d |");
                 Console.WriteLine("               then board will be 'abcd'");
 
+                Console.ReadKey();
+
                 return;
             }
 
