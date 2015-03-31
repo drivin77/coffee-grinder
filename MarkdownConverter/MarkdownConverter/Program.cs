@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace MarkdownConverter
@@ -18,6 +20,8 @@ namespace MarkdownConverter
         private static HtmlTag _unorderedListTag;
         private static HtmlTag _orderedListTag;
         private static HtmlTag _listItemTag;
+        private static HtmlTag _emTag;
+        private static HtmlTag _strongTag;
 
         static void Main(string[] args)
         {
@@ -38,8 +42,8 @@ namespace MarkdownConverter
             _strongRegex = new Regex(@"(\*\*\w+|\w+\*\*)");
             _strong2Regex = new Regex(@"(__\w+|\w+__)");
 
-            var emTag = new HtmlTag("<em>", "</em>");
-            var strongTag = new HtmlTag("<strong>", "</strong>");
+            _emTag = new HtmlTag("<em>", "</em>");
+            _strongTag = new HtmlTag("<strong>", "</strong>");
             _paragraphTag = new HtmlTag("<p>", "</p>");
             _unorderedListTag = new HtmlTag("<ul>", "</ul>");
             _orderedListTag = new HtmlTag("<ol>", "</ol>");
@@ -53,10 +57,10 @@ namespace MarkdownConverter
                 {"####",    new HtmlTag("<h4>", "</h4>")},
                 {"#####",   new HtmlTag("<h5>", "</h5>")},
                 {"#######", new HtmlTag("<h6>", "</h6>")},
-                {"*",       emTag},
-                {"_",       emTag},
-                {"**",      strongTag},
-                {"__",      strongTag}
+                {"*",       _emTag},
+                {"_",       _emTag},
+                {"**",      _strongTag},
+                {"__",      _strongTag}
             };
 
             var markupFile = new StreamReader(markdownFilePath);
@@ -83,7 +87,7 @@ namespace MarkdownConverter
                     RegexOptions.Multiline
                 );
 
-                // for all headers in the markdown file...
+                // for all headers in the markdown file we found in the above statement...
                 foreach (Match match in matches)
                 {
                     // quick lookup of which header tag to use based on first match in header
@@ -111,12 +115,13 @@ namespace MarkdownConverter
                     // if paragraph doesn't start with #, or a list symbol, then it's a paragraph
                     switch (token[0])
                     {
-                        // header case.  Must have a space after the header symbol.
+                        // header case. we've already added header tags in-place above,
+                        // so just write out the header tag, which is the only line we'll see that
+                        // begins with '<', since we replace all '<'s above with html encoding.
                         case '<':
                             htmlFile.Write(token);
                             break;
                           
-
                         // unordered list case.  Must have a space after the list symbol.
                         case '-':
                         case '+':
@@ -141,9 +146,11 @@ namespace MarkdownConverter
 
                             break;
                     }
+
+                    // put back in the newlines we stripped above
                     htmlFile.WriteLine();
                     htmlFile.WriteLine();
-                }  
+                }
             }
             markupFile.Close();
         }
@@ -178,7 +185,7 @@ namespace MarkdownConverter
             // go through each list item in the paragraph
             foreach (var listItem in Regex.Split(token, "\r\n"))
             {
-                var replacement = Regex.Replace(listItem, @"^[\-|\+|\*]\s+", _listItemTag.OpenTag);
+                var replacement = Regex.Replace(listItem, @"^[-|+|*]\s+", _listItemTag.OpenTag);
                 replacement = replacement.Insert(replacement.Length, _listItemTag.CloseTag);
                 htmlFile.WriteLine(replacement);
             }
@@ -187,67 +194,133 @@ namespace MarkdownConverter
         }
 
         /// <summary>
-        /// Inlines are emphasis (* or _) strong (** or __), or ampersand (&) and less than (&lt;)
-        /// escaping.
+        /// Inlines are emphasis (* or _) strong (** or __)
         /// </summary>
         /// <param name="token"></param>
         /// <param name="htmlFile"></param>
         private static void ParseAndWriteInlines(string token, StreamWriter htmlFile)
         {
-            htmlFile.Write(token);
-            // keep closing tags on a stack for emphasis and strong for nesting.
-         /*   var htmlTagStack = new Stack<string>();
+            // iterate through token to find special symbols
 
-            // line to write to output file
-            var fileWriteLine = new StringBuilder();
+            var outputString = new StringBuilder();
 
-            // iterate through every token (separated by whitespace in the line and transform 
-            // in-lines in place
-            var wordTokens = token.Split(' ');
-            foreach (var wordToken in wordTokens)
-            {
-                // em case
-                if (Regex.IsMatch(token, "^(\*|_)\w+"))
-                {
-                    wordToken.
-                }
-            }*/
-            /*
-            LastCharSeen lastChar;
+            // keep a list of indices in the string where we need to insert tag.
+            // key: index in token string 
+            // value: tag to insert
+            var tagSubstitutionLocations = new Dictionary<int, string>();
 
-            var tokenLength = token.Length;
-            for (var i = 0; i < tokenLength; ++i)
+            var underscoreEmFoundAt = -1;
+            var starEmFoundAt = -1;
+            var doubleUnderscoreStrongFoundAt = -1;
+            var doubleStarStrongFound = -1;            
+
+            for (var i = 0; i < token.Length; ++i)
             {
                 switch (token[i])
                 {
-                    case '*':
                     case '_':
-                        var isStrong = false;
-                        var isEm = false;
-                        // check for valid <em> or <strong>
-                        if (i < tokenLength - 1)
+                        if ((underscoreEmFoundAt >= 0 || doubleUnderscoreStrongFoundAt >= 0) && i != 0 && !token[i - 1].Equals(' '))
                         {
-                            // <strong> case (potentially)
-                            if (token[i].Equals(token[i + 1]))
+                            if (i < token.Length - 1 && token[i + 1].Equals('_'))
                             {
-                                if (i < tokenLength - 2 && ! token[i + 2].Equals(' '))
+                                if (doubleUnderscoreStrongFoundAt >= 0)
                                 {
+                                    tagSubstitutionLocations[doubleUnderscoreStrongFoundAt] = _strongTag.OpenTag;
+                                    tagSubstitutionLocations[i] = _strongTag.CloseTag;
                                     ++i;
-                                    isStrong = true;
+                                    doubleUnderscoreStrongFoundAt = -1;
                                 }
                             }
 
-                            // <em> case
-                            else if (!token[i + 1].Equals(' '))
+                            else
                             {
-                                isEm = true;
+                                tagSubstitutionLocations[underscoreEmFoundAt] = _emTag.OpenTag;
+                                tagSubstitutionLocations[i] = _emTag.CloseTag;
+                            
+                                underscoreEmFoundAt = -1;     
+                            }
+                                                  
+                        }
+                        else
+                        {
+                            if (i < token.Length - 1)
+                            {
+                                if (!token[i + 1].Equals(' '))
+                                {
+                                    if (token[i + 1].Equals('_') && i < token.Length - 2 && !token[i + 2].Equals(' '))
+                                    {
+                                        doubleUnderscoreStrongFoundAt = i;
+                                        ++i;
+                                    }
+
+                                    else
+                                    {
+                                        underscoreEmFoundAt = i;
+                                    }
+                                }
+                                    
                             }
                         }
+                        break;
 
-                    default:
+                    case '*':
+                        if ((starEmFoundAt >= 0 || doubleStarStrongFound >= 0) && i != 0 && !token[i - 1].Equals(' '))
+                        {
+                            if (i < token.Length - 1 && token[i + 1].Equals('*'))
+                            {
+                                if (doubleStarStrongFound >= 0)
+                                {
+                                    tagSubstitutionLocations[doubleStarStrongFound] = _strongTag.OpenTag;
+                                    tagSubstitutionLocations[i] = _strongTag.CloseTag;
+                                    ++i;
+                                    doubleStarStrongFound = -1;
+                                }
+                            }
 
+                            else
+                            {
+                                tagSubstitutionLocations[starEmFoundAt] = _emTag.OpenTag;
+                                tagSubstitutionLocations[i] = _emTag.CloseTag;
+                               
+                                starEmFoundAt = -1;     
+                            }
+                                                  
+                        }
+                        else
+                        {
+                            if (i < token.Length - 1)
+                            {
+                                if (!token[i + 1].Equals(' '))
+                                {
+                                    if (token[i + 1].Equals('*') && i < token.Length - 2 && !token[i + 2].Equals(' '))
+                                    {
+                                        doubleStarStrongFound = i;
+                                        ++i;
+                                    }
+
+                                    else
+                                    {
+                                        starEmFoundAt = i;
+                                    }
+                                }
+                                    
+                            }
+                        }
+                        break;
                 }
-            }*/
+            }
+
+            var reversedDictionary = tagSubstitutionLocations.Reverse();
+
+            var sbToken = token;
+
+            foreach (var tagLocation in reversedDictionary)
+            {
+                sbToken.Replace() = tagLocation.Value;
+            }
+
+            htmlFile.Write(outputString);
+            
         }
     }
 }
