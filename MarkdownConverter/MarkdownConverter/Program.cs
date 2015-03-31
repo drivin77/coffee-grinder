@@ -11,12 +11,13 @@ namespace MarkdownConverter
         private static Regex _em2Regex;
         private static Regex _strongRegex;
         private static Regex _strong2Regex;
-        private static Regex _ampRegex;
-        private static Regex _ltRegex;
 
         private static Dictionary<String, HtmlTag> _symbolHash;
 
         private static HtmlTag _paragraphTag;
+        private static HtmlTag _unorderedListTag;
+        private static HtmlTag _orderedListTag;
+        private static HtmlTag _listItemTag;
 
         static void Main(string[] args)
         {
@@ -40,6 +41,10 @@ namespace MarkdownConverter
             var emTag = new HtmlTag("<em>", "</em>");
             var strongTag = new HtmlTag("<strong>", "</strong>");
             _paragraphTag = new HtmlTag("<p>", "</p>");
+            _unorderedListTag = new HtmlTag("<ul>", "</ul>");
+            _orderedListTag = new HtmlTag("<ol>", "</ol>");
+            _listItemTag = new HtmlTag("<li>", "</li>");
+
             _symbolHash = new Dictionary<String, HtmlTag>
             {
                 {"#",       new HtmlTag("<h1>", "</h1>")},
@@ -59,10 +64,8 @@ namespace MarkdownConverter
 
             using (htmlFile)
             {
+                // read entire file into a string object
                 var fileString = markupFile.ReadToEnd();
-
-                // normalize all line endings
-           //     fileString = Regex.Replace(fileString, @"\r\n", @"\n");
 
                 // replace tab chars
                 fileString = Regex.Replace(fileString, @"\t", @"    ");
@@ -73,36 +76,46 @@ namespace MarkdownConverter
                 // file-wide replacement for <.  
                 fileString = Regex.Replace(fileString, @"<", @"&lt;");
 
-                // match all headers and replace
-                var matches = Regex.Matches(fileString, @"^(#{1,6})\s+([\w\s^#]+?)(#*)$", RegexOptions.Multiline);
+                // match all headers and replace in-place file-wide
+                var matches = Regex.Matches(
+                    fileString,
+                    @"^(#{1,6})\s*(.*?)\s*#*\s*(?:\n|$)",
+                    RegexOptions.Multiline
+                );
+
+                // for all headers in the markdown file...
                 foreach (Match match in matches)
                 {
-                    //match.Result(@"<h1>$2</h1>");
+                    // quick lookup of which header tag to use based on first match in header
+                    // string: match.Groups[1].Value will be "#", "##", ... "######".
+                    // our Dictionary keeps which html tag we should use based on how many '#'s.
                     var headerTag = _symbolHash[match.Groups[1].Value];
-                    var replacementString = String.Format("{0}{1}{2}", headerTag.OpenTag, match.Groups[2], headerTag.CloseTag);
-                    fileString = Regex.Replace(fileString, match.ToString(), replacementString);
-                    //CreateHeader(match, fileString);
+
+                    // replace the markdown header syntax with html tags
+                    var replacementString = String.Format(
+                        "{0}{1}{2}", headerTag.OpenTag,
+                        match.Groups[2].Value.Trim(),
+                        headerTag.CloseTag
+                    );
+
+                    // actually run the replacement
+                    fileString = 
+                        Regex.Replace(fileString, match.ToString().Trim(), replacementString);
                 }
 
                 // split file into paragraph tokens
                 var tokens = Regex.Split(fileString, "\r\n\r\n");
-               // var tokens = Regex.Split(fileString, "\n\n");
 
                 foreach (var token in tokens)
                 {
-
                     // if paragraph doesn't start with #, or a list symbol, then it's a paragraph
                     switch (token[0])
                     {
                         // header case.  Must have a space after the header symbol.
-                        case '#':
-                            if (Regex.IsMatch(token, @"#+\s"))
-                            {
-                        //        CreateHeader(token, htmlFile);
-                                break;
-                            }
-
-                            goto default;
+                        case '<':
+                            htmlFile.Write(token);
+                            break;
+                          
 
                         // unordered list case.  Must have a space after the list symbol.
                         case '-':
@@ -144,39 +157,33 @@ namespace MarkdownConverter
 
         private static void CreateOrderedList(string token, StreamWriter htmlFile)
         {
-            htmlFile.Write(token);
-          //  throw new NotImplementedException();
+            htmlFile.WriteLine(_orderedListTag.OpenTag);
+
+            // go through each list item in the paragraph
+            foreach (var listItem in Regex.Split(token, "\r\n"))
+            {
+                var replacement = Regex.Replace(listItem, @"^\d+\.\s+", _listItemTag.OpenTag);
+                replacement = replacement.Insert(replacement.Length, _listItemTag.CloseTag);
+                htmlFile.WriteLine(replacement);
+            }
+
+            htmlFile.Write(_orderedListTag.CloseTag);
+          
         }
 
         private static void CreateUnorderedList(string token, StreamWriter htmlFile)
         {
-            htmlFile.Write(token);
-          //  throw new NotImplementedException();
-        }
+            htmlFile.WriteLine(_unorderedListTag.OpenTag);
 
-        /// <summary>
-        /// Header is a simple case - 1-6 '#' symbols followed by text, followed by any number
-        /// of '#' symbols which we ignore.
-        /// </summary>
-        /// <param name="token">the token to parse</param>
-        /// <param name="markupFile">the file to write to</param>
-        private static void CreateHeader(Match headerMatch, StreamWriter markupFile)
-        {
-          /*  var headerMatch = Regex.Match(token, @"^#+{1,6}\s(.*)\s+#*$", RegexOptions.Multiline);
-            if (! headerMatch.Success)
-                throw new ArgumentException(
-                    String.Format(
-                        "Header token not formatted properly: {0}.",
-                        token
-                    )
-                );*/
+            // go through each list item in the paragraph
+            foreach (var listItem in Regex.Split(token, "\r\n"))
+            {
+                var replacement = Regex.Replace(listItem, @"^[\-|\+|\*]\s+", _listItemTag.OpenTag);
+                replacement = replacement.Insert(replacement.Length, _listItemTag.CloseTag);
+                htmlFile.WriteLine(replacement);
+            }
 
-            var headerString = headerMatch.Groups[1].Value;
-            var headerHtmlTags = _symbolHash[headerString];
-
-            markupFile.Write(headerHtmlTags.OpenTag);
-            markupFile.Write(headerMatch.Groups[2].Value);
-            markupFile.Write(headerHtmlTags.CloseTag);
+            htmlFile.Write(_unorderedListTag.CloseTag);
         }
 
         /// <summary>
