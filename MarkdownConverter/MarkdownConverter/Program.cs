@@ -61,14 +61,32 @@ namespace MarkdownConverter
             {
                 var fileString = markupFile.ReadToEnd();
 
+                // normalize all line endings
+           //     fileString = Regex.Replace(fileString, @"\r\n", @"\n");
+
+                // replace tab chars
+                fileString = Regex.Replace(fileString, @"\t", @"    ");
+
                 // file-wide replacement for &, making sure to leave html codes alone
                 fileString = Regex.Replace(fileString, @"&(?!#?\w+;)", @"&amp;");
 
                 // file-wide replacement for <.  
                 fileString = Regex.Replace(fileString, @"<", @"&lt;");
 
+                // match all headers and replace
+                var matches = Regex.Matches(fileString, @"^(#{1,6})\s+([\w\s^#]+?)(#*)$", RegexOptions.Multiline);
+                foreach (Match match in matches)
+                {
+                    //match.Result(@"<h1>$2</h1>");
+                    var headerTag = _symbolHash[match.Groups[1].Value];
+                    var replacementString = String.Format("{0}{1}{2}", headerTag.OpenTag, match.Groups[2], headerTag.CloseTag);
+                    fileString = Regex.Replace(fileString, match.ToString(), replacementString);
+                    //CreateHeader(match, fileString);
+                }
+
                 // split file into paragraph tokens
                 var tokens = Regex.Split(fileString, "\r\n\r\n");
+               // var tokens = Regex.Split(fileString, "\n\n");
 
                 foreach (var token in tokens)
                 {
@@ -141,32 +159,24 @@ namespace MarkdownConverter
         /// of '#' symbols which we ignore.
         /// </summary>
         /// <param name="token">the token to parse</param>
-        /// <param name="htmlFile">the file to write to</param>
-        private static void CreateHeader(string token, StreamWriter htmlFile)
+        /// <param name="markupFile">the file to write to</param>
+        private static void CreateHeader(Match headerMatch, StreamWriter markupFile)
         {
-            var headerMatch = Regex.Match(token, @"(#+)\s(.*)\s(#*)$", RegexOptions.Multiline);
+          /*  var headerMatch = Regex.Match(token, @"^#+{1,6}\s(.*)\s+#*$", RegexOptions.Multiline);
             if (! headerMatch.Success)
                 throw new ArgumentException(
                     String.Format(
                         "Header token not formatted properly: {0}.",
                         token
                     )
-                );
+                );*/
 
             var headerString = headerMatch.Groups[1].Value;
             var headerHtmlTags = _symbolHash[headerString];
-            
-            if (headerHtmlTags == null)
-                throw new ArgumentException(
-                    String.Format(
-                        "Header token not formatted properly: {0}.",
-                        token
-                    )
-                );
 
-            htmlFile.Write(headerHtmlTags.OpenTag);
-            ParseAndWriteInlines(headerMatch.Groups[2].Value, htmlFile);
-            htmlFile.Write(headerHtmlTags.CloseTag);
+            markupFile.Write(headerHtmlTags.OpenTag);
+            markupFile.Write(headerMatch.Groups[2].Value);
+            markupFile.Write(headerHtmlTags.CloseTag);
         }
 
         /// <summary>
