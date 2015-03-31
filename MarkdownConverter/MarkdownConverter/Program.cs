@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics.Eventing.Reader;
 using System.IO;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace MarkdownConverter
@@ -24,17 +20,27 @@ namespace MarkdownConverter
 
         static void Main(string[] args)
         {
-            _emRegex = new Regex("(\\*\\w+|\\w+\\*)");
-            _em2Regex = new Regex("(_\\w+|\\w+_)");
-            _strongRegex = new Regex("(\\*\\*\\w+|\\w+\\*\\*)");
-            _strong2Regex = new Regex("(__\\w+|\\w+__)");
-            _ampRegex = new Regex("");
-            _ltRegex = new Regex("\\w*<\\s+");
+            try
+            {
+                MarkdownToHtml("Markdown.txt", "htmlConversion.html");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception found: " + e.Message);
+            }      
+        }
+
+        private static void MarkdownToHtml(string markdownFilePath, string htmlFilePath)
+        {
+            _emRegex = new Regex(@"(\*\w+|\w+\*)");
+            _em2Regex = new Regex(@"(_\w+|\w+_)");
+            _strongRegex = new Regex(@"(\*\*\w+|\w+\*\*)");
+            _strong2Regex = new Regex(@"(__\w+|\w+__)");
 
             var emTag = new HtmlTag("<em>", "</em>");
             var strongTag = new HtmlTag("<strong>", "</strong>");
             _paragraphTag = new HtmlTag("<p>", "</p>");
-            _symbolHash = new Dictionary<String, HtmlTag>()
+            _symbolHash = new Dictionary<String, HtmlTag>
             {
                 {"#",       new HtmlTag("<h1>", "</h1>")},
                 {"##",      new HtmlTag("<h2>", "</h2>")},
@@ -48,64 +54,67 @@ namespace MarkdownConverter
                 {"__",      strongTag}
             };
 
-            try
+            var markupFile = new StreamReader(markdownFilePath);
+            var htmlFile = new StreamWriter(htmlFilePath, false);
+
+            using (htmlFile)
             {
-                var markupFile = new StreamReader("Markdown.txt");
-                var htmlFile = new StreamWriter("htmlConversion.html", false);
-                while (markupFile.Peek() >= 0)
+                var fileString = markupFile.ReadToEnd();
+
+                // file-wide replacement for &, making sure to leave html codes alone
+                fileString = Regex.Replace(fileString, @"&(?!#?\w+;)", @"&amp;");
+
+                // file-wide replacement for <.  
+                fileString = Regex.Replace(fileString, @"<", @"&lt;");
+
+                // split file into paragraph tokens
+                var tokens = Regex.Split(fileString, "\r\n\r\n");
+
+                foreach (var token in tokens)
                 {
-                    var line = markupFile.ReadToEnd();
 
-                    // split file into paragraph tokens
-                    var tokens = Regex.Split(line, "\r\n\r\n");
-
-                    foreach (var token in tokens)
+                    // if paragraph doesn't start with #, or a list symbol, then it's a paragraph
+                    switch (token[0])
                     {
-                        // if paragraph doesn't start with #, or a list symbol, then it's a paragraph
-                        switch (token[0])
-                        {
-                            // header case.  Must have a space after the header symbol.
-                            case '#':
-                                if (Regex.IsMatch(token, "#+\\s"))
-                                    CreateHeader(token, htmlFile);
+                        // header case.  Must have a space after the header symbol.
+                        case '#':
+                            if (Regex.IsMatch(token, @"#+\s"))
+                            {
+                        //        CreateHeader(token, htmlFile);
                                 break;
-                            
-                            // unordered list case.  Must have a space after the list symbol.
-                            case '-':
-                            case '+':
-                            case '*':
-                                if (Regex.IsMatch(token, "(-|\\+|\\*)\\s"))
-                                    CreateUnorderedList(token, htmlFile);
-                                goto default;
+                            }
 
-                            default:
-                                // we can't have a regex in a case statement, so the ordered
-                                // list has to go in default as the ordered list can specify any
-                                // number folowed by a period and a space.
-                                if (Regex.IsMatch(token, "\\d+\\.\\s"))
-                                    CreateOrderedList(token, htmlFile);
+                            goto default;
 
-                                else
-                                    CreateParagraph(token, htmlFile);
-
+                        // unordered list case.  Must have a space after the list symbol.
+                        case '-':
+                        case '+':
+                        case '*':
+                            if (Regex.IsMatch(token, @"[\-|\+|\*]\s"))
+                            {
+                                CreateUnorderedList(token, htmlFile);
                                 break;
-                        }
-                        Console.WriteLine(token);
+                            }
+
+                            goto default;
+
+                        default:
+                            // we can't have a regex in a case statement, so the ordered
+                            // list has to go in default as the ordered list can specify any
+                            // number folowed by a period and a space.
+                            if (Regex.IsMatch(token, @"^\d+\.\s"))
+                                CreateOrderedList(token, htmlFile);
+
+                            else
+                                CreateParagraph(token, htmlFile);
+
+                            break;
                     }
-                    Console.WriteLine();
-                    
-                }
-
-                htmlFile.Close();
-
-                Console.ReadKey();
+                    htmlFile.WriteLine();
+                    htmlFile.WriteLine();
+                }  
             }
-            catch (Exception e)
-            {
-                Console.WriteLine("Exception found: " + e.Message);
-                throw;
-            }
-            
+            markupFile.Close();
         }
 
         private static void CreateParagraph(string token, StreamWriter htmlFile)
@@ -117,12 +126,14 @@ namespace MarkdownConverter
 
         private static void CreateOrderedList(string token, StreamWriter htmlFile)
         {
-            throw new NotImplementedException();
+            htmlFile.Write(token);
+          //  throw new NotImplementedException();
         }
 
         private static void CreateUnorderedList(string token, StreamWriter htmlFile)
         {
-            throw new NotImplementedException();
+            htmlFile.Write(token);
+          //  throw new NotImplementedException();
         }
 
         /// <summary>
@@ -133,7 +144,7 @@ namespace MarkdownConverter
         /// <param name="htmlFile">the file to write to</param>
         private static void CreateHeader(string token, StreamWriter htmlFile)
         {
-            var headerMatch = Regex.Match(token, "(#+)\\s(.*)\\s(#*)$", RegexOptions.Multiline);
+            var headerMatch = Regex.Match(token, @"(#+)\s(.*)\s(#*)$", RegexOptions.Multiline);
             if (! headerMatch.Success)
                 throw new ArgumentException(
                     String.Format(
@@ -166,8 +177,9 @@ namespace MarkdownConverter
         /// <param name="htmlFile"></param>
         private static void ParseAndWriteInlines(string token, StreamWriter htmlFile)
         {
+            htmlFile.Write(token);
             // keep closing tags on a stack for emphasis and strong for nesting.
-            var htmlTagStack = new Stack<string>();
+         /*   var htmlTagStack = new Stack<string>();
 
             // line to write to output file
             var fileWriteLine = new StringBuilder();
@@ -178,11 +190,11 @@ namespace MarkdownConverter
             foreach (var wordToken in wordTokens)
             {
                 // em case
-                if (Regex.IsMatch(token, "^(\\*|_)\\w+"))
+                if (Regex.IsMatch(token, "^(\*|_)\w+"))
                 {
                     wordToken.
                 }
-            }
+            }*/
             /*
             LastCharSeen lastChar;
 
@@ -217,8 +229,8 @@ namespace MarkdownConverter
 
                     default:
 
-                }*/
-            }
+                }
+            }*/
         }
     }
 }
