@@ -181,6 +181,13 @@ namespace MarkdownConverter
             htmlFile.Write(_paragraphTag.CloseTag);
         }
 
+        /// <summary>
+        /// Creates lists for ordered or unordered list tokens
+        /// </summary>
+        /// <param name="token">an entire chunk of list</param>
+        /// <param name="htmlFile">file to write to</param>
+        /// <param name="outerListTag">the HtmlTag of the outer list <ol></ol> or <ul></ul> for example</param>
+        /// <param name="listItemRegex">the regex of the particular list type to find list items</param>
         private static void CreateList(
             string token,
             StreamWriter htmlFile,
@@ -190,11 +197,20 @@ namespace MarkdownConverter
         {
             htmlFile.WriteLine(outerListTag.OpenTag);
 
-            // go through each list item in the paragraph
-            foreach (var listItem in Regex.Split(token, "\r\n"))
+            // go through each list item in the paragraph, allowing for multi-line list formatting
+            foreach (var listItem in Regex.Split(token, "\r\n" + listItemRegex, RegexOptions.Multiline))
             {
-                var replacement = Regex.Replace(listItem, listItemRegex, _listItemTag.OpenTag);
+                // remove list marker
+                var replacement = Regex.Replace(listItem, listItemRegex, "");
+
+                // insert html at beginning and end
+                replacement = replacement.Insert(0, _listItemTag.OpenTag);
                 replacement = replacement.Insert(replacement.Length, _listItemTag.CloseTag);
+
+                // remove any white space in front of new lines
+                replacement = Regex.Replace(replacement, @"\r\n\s{1,3}", "\r\n");
+
+                // encode any in-lines in the list
                 ParseAndWriteInlines(replacement, htmlFile);
                 htmlFile.WriteLine();
             }
