@@ -21,6 +21,11 @@ namespace BoggleGame.Dictionary
             get { return _wordTrie.NumElements; }
         }
 
+        public string DictionaryFileName
+        {
+            get { return "ospd.txt"; }
+        }
+        
         /// <summary>
         /// Initializes the dictionary from a DictionaryFile.
         /// </summary>
@@ -35,7 +40,7 @@ namespace BoggleGame.Dictionary
                 Path.Combine(
                     Directory.GetCurrentDirectory(),
                     "Dictionary",
-                    "ospd.txt")
+                    DictionaryFileName)
                 );
 
             foreach (var word in df.Words)
@@ -48,8 +53,8 @@ namespace BoggleGame.Dictionary
                     }
                     catch (ArgumentException e)
                     {
-                        var message = "Unacceptable word found in dictionary file. " +
-                                      "See inner-exception for details.";
+                        const string message = "Unacceptable word found in dictionary file. " +
+                                               "See inner-exception for details.";
                         throw new ArgumentException(message, e);
                     }
                 }

@@ -50,6 +50,9 @@ namespace BoggleGame
                 var boardInput = args[1];
 
                 _diction = new BoggleDictionary();
+                Console.WriteLine("Dictionary name: '{0}'", _diction.DictionaryFileName);
+                Console.WriteLine("Num. words in dictionary: {0}", _diction.NumWords);
+
                 _wordsFound = new ArrayList();
                 _duplicateTrie = new TST();
 
@@ -64,7 +67,7 @@ namespace BoggleGame
                     // ArrayList uses QuickSort, so no concern with speed of sort.
                     _wordsFound.Sort();
 
-                    Console.WriteLine(String.Format("{0} words found.", _wordsFound.Count));
+                    Console.WriteLine("{0} words found.", _wordsFound.Count);
                     foreach (var word in _wordsFound)
                     {
                         Console.WriteLine(word);
@@ -76,6 +79,8 @@ namespace BoggleGame
                     Console.WriteLine("No words with 3 or more letters found!");
                 }
 
+                Console.WriteLine();
+                Console.WriteLine("Press any key to exit.");
                 Console.ReadKey();
             }
             catch (Exception e)
@@ -83,6 +88,9 @@ namespace BoggleGame
                 Console.WriteLine(e.Message);
                 if (e.InnerException != null)
                     Console.WriteLine(e.InnerException.Message);
+
+                Console.WriteLine();
+                Console.WriteLine("Press any key to exit.");
                 Console.ReadKey();
             }
         }

@@ -23,14 +23,48 @@ namespace MarkdownConverter
 
         static void Main(string[] args)
         {
+            if (args.Length != 2 || (args.Length == 1 && args[0].Equals("?")))
+            {
+                Console.WriteLine("Usage: MarkdownConverter <MarkdownFile> <HTMLFile>");
+                Console.WriteLine(" ");
+                Console.WriteLine("  <MarkdownFile>  path including filename of markdown file to read.");
+                Console.WriteLine("  <HTMLFile>      path including filename of html output file. Will be overwritten.");
+
+                Console.ReadKey();
+
+                return;
+            }
+                
             try
             {
-                MarkdownToHtml("Markdown.txt", @"htmlConversion.html");
-             //   Console.ReadKey();
+                var mdFile = args[0];
+                var htmlFile = args[1];
+
+                if (! File.Exists(mdFile))
+                    throw new Exception(String.Format("Input file couldn't be found! ({0})", mdFile));
+
+                var outFileDir = Path.GetDirectoryName(htmlFile);
+                if (! string.IsNullOrWhiteSpace(outFileDir) && ! Directory.Exists(outFileDir))
+                    throw new Exception(
+                        String.Format(
+                            "Output file specified ('{0}') can't be written to a directory which " +
+                            "doesn't yet exist",
+                            htmlFile
+                        )
+                    );
+                
+                MarkdownToHtml(mdFile, htmlFile);
+                Console.WriteLine("Converted markdown file: '{0}' to html: '{1}'", mdFile, htmlFile);
+
+                Console.WriteLine();
+                Console.WriteLine("Press any key to exit.");
+                Console.ReadKey();
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception found: " + e.Message + e.StackTrace);
+                Console.WriteLine("Exception found: " + e.Message);
+                Console.WriteLine();
+                Console.WriteLine("Press any key to exit.");
                 Console.ReadKey();
             }      
         }
@@ -62,7 +96,7 @@ namespace MarkdownConverter
                 // read entire file into a string object
                 var fileString = markupFile.ReadToEnd();
 
-                // replace tab chars
+                // replace tab chars with 4 spaces
                 fileString = Regex.Replace(fileString, @"\t", @"    ");
 
                 // file-wide replacement for &, making sure to leave html codes alone
@@ -98,9 +132,12 @@ namespace MarkdownConverter
                     );
 
                     // actually run the replacement
-                    var replacementRegex = new Regex(match.ToString().Trim());
-                    fileString = 
+                    var escapedRegex = Regex.Escape(match.ToString().Trim());
+                    var replacementRegex = new Regex(escapedRegex);
+
+                    fileString =
                         replacementRegex.Replace(fileString, replacementString, 1);
+
                 }
 
                 // split file into paragraph tokens
@@ -118,6 +155,11 @@ namespace MarkdownConverter
             markupFile.Close();
         }
 
+        /// <summary>
+        /// Here we check the first char of the paragraph and process accordingly
+        /// </summary>
+        /// <param name="token">the paragraph token</param>
+        /// <param name="htmlFile">output file to write to</param>
         private static void SplitParagraphToken(string token, StreamWriter htmlFile)
         {
             // if paragraph doesn't start with #, or a list symbol, then it's a paragraph
@@ -163,7 +205,7 @@ namespace MarkdownConverter
                 default:
                     // we can't have a regex in a case statement, so the ordered
                     // list has to go in default as the ordered list can specify any
-                    // number folowed by a period and a space.
+                    // number followed by a period and a space.
                     if (Regex.IsMatch(token, OlListItemReString))
                         CreateList(token, htmlFile, _orderedListTag, OlListItemReString);
 
