@@ -18,6 +18,9 @@ namespace MarkdownConverter
         private static HtmlTag _emTag;
         private static HtmlTag _strongTag;
 
+        const string OlListItemReString = @"^\s{0,3}\d+\.\s+";
+        const string UlListItemReString = @"^\s{0,3}[-|+|*]\s+";
+
         static void Main(string[] args)
         {
             try
@@ -50,9 +53,6 @@ namespace MarkdownConverter
                 {"#####",   new HtmlTag("<h5>", "</h5>")},
                 {"#######", new HtmlTag("<h6>", "</h6>")}
             };
-
-            const string olListItemReString = @"^\s{0,3}\d+\.\s+";
-            const string ulListItemReString = @"^\s{0,3}[-|+|*]\s+";
 
             var markupFile = new StreamReader(markdownFilePath);
             var htmlFile = new StreamWriter(htmlFilePath, false);
@@ -98,8 +98,9 @@ namespace MarkdownConverter
                     );
 
                     // actually run the replacement
+                    var replacementRegex = new Regex(match.ToString().Trim());
                     fileString = 
-                        Regex.Replace(fileString, match.ToString().Trim(), replacementString);
+                        replacementRegex.Replace(fileString, replacementString, 1);
                 }
 
                 // split file into paragraph tokens
@@ -107,48 +108,70 @@ namespace MarkdownConverter
 
                 foreach (var token in tokens)
                 {
-                    // if paragraph doesn't start with #, or a list symbol, then it's a paragraph
-                    switch (token[0])
-                    {
-                        // header case. we've already added header tags in-place above,
-                        // so just write out the header tag, which is the only line we'll see that
-                        // begins with '<', since we replace all '<'s above with html encoding.
-                        case '<':
-                            htmlFile.Write(token);
-                            break;
-                          
-                        // unordered list case.  Must have a space after the list symbol.
-                        case '-':
-                        case '+':
-                        case '*':
-                        case ' ':
-                            if (Regex.IsMatch(token, ulListItemReString))
-                            {
-                                CreateList(token, htmlFile, _unorderedListTag, ulListItemReString);
-                                break;
-                            }
+                    SplitParagraphToken(token, htmlFile);
 
-                            goto default;
-
-                        default:
-                            // we can't have a regex in a case statement, so the ordered
-                            // list has to go in default as the ordered list can specify any
-                            // number folowed by a period and a space.
-                            if (Regex.IsMatch(token, olListItemReString))
-                                CreateList(token, htmlFile, _orderedListTag, olListItemReString);
-
-                            else
-                                CreateParagraph(token, htmlFile);
-
-                            break;
-                    }
-
-                    // put back in the newlines we stripped above
+                    // put back in the newlines we stripped above in the Regex split
                     htmlFile.WriteLine();
                     htmlFile.WriteLine();
                 }
             }
             markupFile.Close();
+        }
+
+        private static void SplitParagraphToken(string token, StreamWriter htmlFile)
+        {
+            // if paragraph doesn't start with #, or a list symbol, then it's a paragraph
+            switch (token[0])
+            {
+                // header case. we've already added header tags in-place above,
+                // so just write out the header tag, which is the only line we'll see that
+                // begins with '<', since we replace all '<'s above with html encoding.
+                case '<':
+                    // check if there are non-blank lines after the header and process the next
+                    // line on as a new paragraph
+                    var newlineRegex = new Regex(@"\r\n");
+                    var hiddenParagraphInHeaderParagraph = newlineRegex.Split(token, 2);
+                    if (hiddenParagraphInHeaderParagraph.Length > 1)
+                    {
+                        htmlFile.WriteLine(hiddenParagraphInHeaderParagraph[0]);
+
+                        // add an extra newline to differentiate the header from the paragraph below
+                        htmlFile.WriteLine();
+                        SplitParagraphToken(hiddenParagraphInHeaderParagraph[1], htmlFile);
+                    }
+
+                    else
+                    {
+                        htmlFile.Write(token);
+                    }
+                        
+                    break;
+
+                // unordered list case.  Must have a space after the list symbol.
+                case '-':
+                case '+':
+                case '*':
+                case ' ':
+                    if (Regex.IsMatch(token, UlListItemReString))
+                    {
+                        CreateList(token, htmlFile, _unorderedListTag, UlListItemReString);
+                        break;
+                    }
+
+                    goto default;
+
+                default:
+                    // we can't have a regex in a case statement, so the ordered
+                    // list has to go in default as the ordered list can specify any
+                    // number folowed by a period and a space.
+                    if (Regex.IsMatch(token, OlListItemReString))
+                        CreateList(token, htmlFile, _orderedListTag, OlListItemReString);
+
+                    else
+                        CreateParagraph(token, htmlFile);
+
+                    break;
+            }
         }
 
         private static void CreateParagraph(string token, StreamWriter htmlFile)
