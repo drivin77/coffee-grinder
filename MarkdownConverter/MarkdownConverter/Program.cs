@@ -200,15 +200,12 @@ namespace MarkdownConverter
         /// <param name="htmlFile"></param>
         private static void ParseAndWriteInlines(string token, StreamWriter htmlFile)
         {
-            // iterate through token to find special symbols
-
-            var outputString = new StringBuilder();
-
             // keep a list of indices in the string where we need to insert tag.
             // key: index in token string 
-            // value: tag to insert
-            var tagSubstitutionLocations = new Dictionary<int, string>();
+            // value: number of characers to remove and tag to insert
+            var tagSubstitutionLocations = new Dictionary<int, Tuple<int, string>>();
 
+            // state
             var underscoreEmFoundAt = -1;
             var starEmFoundAt = -1;
             var doubleUnderscoreStrongFoundAt = -1;
@@ -225,8 +222,8 @@ namespace MarkdownConverter
                             {
                                 if (doubleUnderscoreStrongFoundAt >= 0)
                                 {
-                                    tagSubstitutionLocations[doubleUnderscoreStrongFoundAt] = _strongTag.OpenTag;
-                                    tagSubstitutionLocations[i] = _strongTag.CloseTag;
+                                    tagSubstitutionLocations[doubleUnderscoreStrongFoundAt] = new Tuple<int, string>(2, _strongTag.OpenTag);
+                                    tagSubstitutionLocations[i] = new Tuple<int, string>(2, _strongTag.CloseTag);
                                     ++i;
                                     doubleUnderscoreStrongFoundAt = -1;
                                 }
@@ -234,8 +231,8 @@ namespace MarkdownConverter
 
                             else
                             {
-                                tagSubstitutionLocations[underscoreEmFoundAt] = _emTag.OpenTag;
-                                tagSubstitutionLocations[i] = _emTag.CloseTag;
+                                tagSubstitutionLocations[underscoreEmFoundAt] = new Tuple<int, string>(1, _emTag.OpenTag);
+                                tagSubstitutionLocations[i] = new Tuple<int, string>(1, _emTag.CloseTag);
                             
                                 underscoreEmFoundAt = -1;     
                             }
@@ -270,8 +267,8 @@ namespace MarkdownConverter
                             {
                                 if (doubleStarStrongFound >= 0)
                                 {
-                                    tagSubstitutionLocations[doubleStarStrongFound] = _strongTag.OpenTag;
-                                    tagSubstitutionLocations[i] = _strongTag.CloseTag;
+                                    tagSubstitutionLocations[doubleStarStrongFound] = new Tuple<int, string>(2, _strongTag.OpenTag);
+                                    tagSubstitutionLocations[i] = new Tuple<int, string>(2, _strongTag.CloseTag);
                                     ++i;
                                     doubleStarStrongFound = -1;
                                 }
@@ -279,8 +276,8 @@ namespace MarkdownConverter
 
                             else
                             {
-                                tagSubstitutionLocations[starEmFoundAt] = _emTag.OpenTag;
-                                tagSubstitutionLocations[i] = _emTag.CloseTag;
+                                tagSubstitutionLocations[starEmFoundAt] = new Tuple<int, string>(1, _emTag.OpenTag);
+                                tagSubstitutionLocations[i] = new Tuple<int, string>(1, _emTag.CloseTag);
                                
                                 starEmFoundAt = -1;     
                             }
@@ -310,17 +307,22 @@ namespace MarkdownConverter
                 }
             }
 
-            var reversedDictionary = tagSubstitutionLocations.Reverse();
+            var sbToken = new StringBuilder(token);
 
-            var sbToken = token;
-
-            foreach (var tagLocation in reversedDictionary)
+            // go backwards through the tokens so we don't have to do
+            // any math on the indices to be replaced
+            foreach (var tagLocation in tagSubstitutionLocations.OrderByDescending(i => i.Key))
             {
-                sbToken.Replace() = tagLocation.Value;
+                var startIndexToReplace = tagLocation.Key;
+                var tuple = tagLocation.Value;
+                var numCharsToRemove = tuple.Item1;
+                var tagToInsert = tuple.Item2;
+
+                sbToken.Remove(startIndexToReplace, numCharsToRemove);
+                sbToken.Insert(startIndexToReplace, tagToInsert);
             }
 
-            htmlFile.Write(outputString);
-            
+            htmlFile.Write(sbToken.ToString());         
         }
     }
 }
