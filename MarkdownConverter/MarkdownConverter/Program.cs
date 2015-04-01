@@ -53,7 +53,9 @@ namespace MarkdownConverter
                         )
                     );
                 
+                // the main function to kick off the conversion
                 MarkdownToHtml(mdFile, htmlFile);
+
                 Console.WriteLine("Converted markdown file: '{0}' to html: '{1}'", mdFile, htmlFile);
 
                 Console.WriteLine();
@@ -267,7 +269,7 @@ namespace MarkdownConverter
         /// <param name="htmlFile">the output file to write to</param>
         private static void ParseAndWriteInlines(string token, StreamWriter htmlFile)
         {
-            // keep a list of indices in the string where we need to insert tag.
+            // keep a list of indices in the string where we need to insert the tag.
             // key: index into input string to begin replacement at
             // value: number of characers to remove from index and tag to insert there
             var tagSubstitutionLocations = new Dictionary<int, Tuple<int, string>>();

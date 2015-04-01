@@ -2,6 +2,9 @@ using System;
 
 namespace MarkdownConverter
 {
+    /// <summary>
+    /// represents an html tag which will help us out in conversions
+    /// </summary>
     public class HtmlTag
     {
         public string OpenTag { get; private set; }
