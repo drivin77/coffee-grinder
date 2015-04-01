@@ -9,12 +9,7 @@ namespace MarkdownConverter
 {
     static class Program
     {
-        private static Regex _emRegex;
-        private static Regex _em2Regex;
-        private static Regex _strongRegex;
-        private static Regex _strong2Regex;
-
-        private static Dictionary<String, HtmlTag> _symbolHash;
+        private static Dictionary<String, HtmlTag> _headerHash;
 
         private static HtmlTag _paragraphTag;
         private static HtmlTag _unorderedListTag;
@@ -27,21 +22,18 @@ namespace MarkdownConverter
         {
             try
             {
-                MarkdownToHtml("Markdown.txt", "htmlConversion.html");
+                MarkdownToHtml("Markdown.txt", @"htmlConversion.html");
+             //   Console.ReadKey();
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception found: " + e.Message);
+                Console.WriteLine("Exception found: " + e.Message + e.StackTrace);
+                Console.ReadKey();
             }      
         }
 
         private static void MarkdownToHtml(string markdownFilePath, string htmlFilePath)
         {
-            _emRegex = new Regex(@"(\*\w+|\w+\*)");
-            _em2Regex = new Regex(@"(_\w+|\w+_)");
-            _strongRegex = new Regex(@"(\*\*\w+|\w+\*\*)");
-            _strong2Regex = new Regex(@"(__\w+|\w+__)");
-
             _emTag = new HtmlTag("<em>", "</em>");
             _strongTag = new HtmlTag("<strong>", "</strong>");
             _paragraphTag = new HtmlTag("<p>", "</p>");
@@ -49,19 +41,18 @@ namespace MarkdownConverter
             _orderedListTag = new HtmlTag("<ol>", "</ol>");
             _listItemTag = new HtmlTag("<li>", "</li>");
 
-            _symbolHash = new Dictionary<String, HtmlTag>
+            _headerHash = new Dictionary<String, HtmlTag>
             {
                 {"#",       new HtmlTag("<h1>", "</h1>")},
                 {"##",      new HtmlTag("<h2>", "</h2>")},
                 {"###",     new HtmlTag("<h3>", "</h3>")},
                 {"####",    new HtmlTag("<h4>", "</h4>")},
                 {"#####",   new HtmlTag("<h5>", "</h5>")},
-                {"#######", new HtmlTag("<h6>", "</h6>")},
-                {"*",       _emTag},
-                {"_",       _emTag},
-                {"**",      _strongTag},
-                {"__",      _strongTag}
+                {"#######", new HtmlTag("<h6>", "</h6>")}
             };
+
+            const string olListItemReString = @"^\s{0,3}\d+\.\s+";
+            const string ulListItemReString = @"^\s{0,3}[-|+|*]\s+";
 
             var markupFile = new StreamReader(markdownFilePath);
             var htmlFile = new StreamWriter(htmlFilePath, false);
@@ -80,6 +71,10 @@ namespace MarkdownConverter
                 // file-wide replacement for <.  
                 fileString = Regex.Replace(fileString, @"<", @"&lt;");
 
+                // file-wide replacement for numbered-list escapes (^1\. in markdown converst to 1.)
+                var numListEscape = new Regex(@"^\s{0,3}(\d+)\\\.", RegexOptions.Multiline);
+                fileString = numListEscape.Replace(fileString, @"$1.");
+
                 // match all headers and replace in-place file-wide
                 var matches = Regex.Matches(
                     fileString,
@@ -93,7 +88,7 @@ namespace MarkdownConverter
                     // quick lookup of which header tag to use based on first match in header
                     // string: match.Groups[1].Value will be "#", "##", ... "######".
                     // our Dictionary keeps which html tag we should use based on how many '#'s.
-                    var headerTag = _symbolHash[match.Groups[1].Value];
+                    var headerTag = _headerHash[match.Groups[1].Value];
 
                     // replace the markdown header syntax with html tags
                     var replacementString = String.Format(
@@ -126,9 +121,10 @@ namespace MarkdownConverter
                         case '-':
                         case '+':
                         case '*':
-                            if (Regex.IsMatch(token, @"[\-|\+|\*]\s"))
+                        case ' ':
+                            if (Regex.IsMatch(token, ulListItemReString))
                             {
-                                CreateUnorderedList(token, htmlFile);
+                                CreateList(token, htmlFile, _unorderedListTag, ulListItemReString);
                                 break;
                             }
 
@@ -138,8 +134,8 @@ namespace MarkdownConverter
                             // we can't have a regex in a case statement, so the ordered
                             // list has to go in default as the ordered list can specify any
                             // number folowed by a period and a space.
-                            if (Regex.IsMatch(token, @"^\d+\.\s"))
-                                CreateOrderedList(token, htmlFile);
+                            if (Regex.IsMatch(token, olListItemReString))
+                                CreateList(token, htmlFile, _orderedListTag, olListItemReString);
 
                             else
                                 CreateParagraph(token, htmlFile);
@@ -162,55 +158,48 @@ namespace MarkdownConverter
             htmlFile.Write(_paragraphTag.CloseTag);
         }
 
-        private static void CreateOrderedList(string token, StreamWriter htmlFile)
+        private static void CreateList(
+            string token,
+            StreamWriter htmlFile,
+            HtmlTag outerListTag,
+            String listItemRegex
+        )
         {
-            htmlFile.WriteLine(_orderedListTag.OpenTag);
+            htmlFile.WriteLine(outerListTag.OpenTag);
 
             // go through each list item in the paragraph
             foreach (var listItem in Regex.Split(token, "\r\n"))
             {
-                var replacement = Regex.Replace(listItem, @"^\d+\.\s+", _listItemTag.OpenTag);
+                var replacement = Regex.Replace(listItem, listItemRegex, _listItemTag.OpenTag);
                 replacement = replacement.Insert(replacement.Length, _listItemTag.CloseTag);
-                htmlFile.WriteLine(replacement);
+                ParseAndWriteInlines(replacement, htmlFile);
+                htmlFile.WriteLine();
             }
 
-            htmlFile.Write(_orderedListTag.CloseTag);
-          
-        }
-
-        private static void CreateUnorderedList(string token, StreamWriter htmlFile)
-        {
-            htmlFile.WriteLine(_unorderedListTag.OpenTag);
-
-            // go through each list item in the paragraph
-            foreach (var listItem in Regex.Split(token, "\r\n"))
-            {
-                var replacement = Regex.Replace(listItem, @"^[-|+|*]\s+", _listItemTag.OpenTag);
-                replacement = replacement.Insert(replacement.Length, _listItemTag.CloseTag);
-                htmlFile.WriteLine(replacement);
-            }
-
-            htmlFile.Write(_unorderedListTag.CloseTag);
+            htmlFile.Write(outerListTag.CloseTag);
         }
 
         /// <summary>
-        /// Inlines are emphasis (* or _) strong (** or __)
+        /// Inlines are: emphasis (* or _) strong (** or __)
         /// </summary>
-        /// <param name="token"></param>
-        /// <param name="htmlFile"></param>
+        /// <param name="token">the current token to parse</param>
+        /// <param name="htmlFile">the output file to write to</param>
         private static void ParseAndWriteInlines(string token, StreamWriter htmlFile)
         {
             // keep a list of indices in the string where we need to insert tag.
-            // key: index in token string 
-            // value: number of characers to remove and tag to insert
+            // key: index into input string to begin replacement at
+            // value: number of characers to remove from index and tag to insert there
             var tagSubstitutionLocations = new Dictionary<int, Tuple<int, string>>();
 
-            // state
+            // state variables
             var underscoreEmFoundAt = -1;
             var starEmFoundAt = -1;
             var doubleUnderscoreStrongFoundAt = -1;
             var doubleStarStrongFound = -1;            
 
+            // ok, not very pretty logic here, but this is the only place we need to get messy.
+            // build up the tagSubstitutionLocations dictionary with valid indices of
+            // *, **, _, __ tokens.
             for (var i = 0; i < token.Length; ++i)
             {
                 switch (token[i])
@@ -220,16 +209,13 @@ namespace MarkdownConverter
                         {
                             if (i < token.Length - 1 && token[i + 1].Equals('_'))
                             {
-                                if (doubleUnderscoreStrongFoundAt >= 0)
-                                {
-                                    tagSubstitutionLocations[doubleUnderscoreStrongFoundAt] = new Tuple<int, string>(2, _strongTag.OpenTag);
-                                    tagSubstitutionLocations[i] = new Tuple<int, string>(2, _strongTag.CloseTag);
-                                    ++i;
-                                    doubleUnderscoreStrongFoundAt = -1;
-                                }
+                                tagSubstitutionLocations[doubleUnderscoreStrongFoundAt] = new Tuple<int, string>(2, _strongTag.OpenTag);
+                                tagSubstitutionLocations[i] = new Tuple<int, string>(2, _strongTag.CloseTag);
+                                ++i;
+                                doubleUnderscoreStrongFoundAt = -1;
                             }
 
-                            else
+                            else 
                             {
                                 tagSubstitutionLocations[underscoreEmFoundAt] = new Tuple<int, string>(1, _emTag.OpenTag);
                                 tagSubstitutionLocations[i] = new Tuple<int, string>(1, _emTag.CloseTag);
@@ -244,6 +230,14 @@ namespace MarkdownConverter
                             {
                                 if (!token[i + 1].Equals(' '))
                                 {
+                                    // escaped _, do nothing
+                                    if (i != 0 && token[i - 1].Equals('\\'))
+                                    {
+                                        // remove the '\' character
+                                        tagSubstitutionLocations[i - 1] = new Tuple<int, string>(1, "");
+                                        break;
+                                    }
+
                                     if (token[i + 1].Equals('_') && i < token.Length - 2 && !token[i + 2].Equals(' '))
                                     {
                                         doubleUnderscoreStrongFoundAt = i;
@@ -265,16 +259,13 @@ namespace MarkdownConverter
                         {
                             if (i < token.Length - 1 && token[i + 1].Equals('*'))
                             {
-                                if (doubleStarStrongFound >= 0)
-                                {
-                                    tagSubstitutionLocations[doubleStarStrongFound] = new Tuple<int, string>(2, _strongTag.OpenTag);
-                                    tagSubstitutionLocations[i] = new Tuple<int, string>(2, _strongTag.CloseTag);
-                                    ++i;
-                                    doubleStarStrongFound = -1;
-                                }
+                                tagSubstitutionLocations[doubleStarStrongFound] = new Tuple<int, string>(2, _strongTag.OpenTag);
+                                tagSubstitutionLocations[i] = new Tuple<int, string>(2, _strongTag.CloseTag);
+                                ++i;
+                                doubleStarStrongFound = -1;
                             }
 
-                            else
+                            else if (doubleStarStrongFound == -1)
                             {
                                 tagSubstitutionLocations[starEmFoundAt] = new Tuple<int, string>(1, _emTag.OpenTag);
                                 tagSubstitutionLocations[i] = new Tuple<int, string>(1, _emTag.CloseTag);
@@ -289,6 +280,14 @@ namespace MarkdownConverter
                             {
                                 if (!token[i + 1].Equals(' '))
                                 {
+                                    // escaped *, do nothing
+                                    if (i != 0 && token[i - 1].Equals('\\'))
+                                    {
+                                        // remove the '\' character
+                                        tagSubstitutionLocations[i - 1] = new Tuple<int, string>(1, "");
+                                        break;
+                                    }
+
                                     if (token[i + 1].Equals('*') && i < token.Length - 2 && !token[i + 2].Equals(' '))
                                     {
                                         doubleStarStrongFound = i;
@@ -299,26 +298,39 @@ namespace MarkdownConverter
                                     {
                                         starEmFoundAt = i;
                                     }
-                                }
-                                    
+                                }                                   
                             }
                         }
                         break;
                 }
             }
 
+            // no <em> or <strong> found
+            if (tagSubstitutionLocations.Count == 0)
+            {
+                htmlFile.Write(token);
+                return;
+            }              
+
+            // found <em> and/or <strong>, so remove the *,**,_,__
+            // chars and replace with <em> and <strong>
             var sbToken = new StringBuilder(token);
 
             // go backwards through the tokens so we don't have to do
-            // any math on the indices to be replaced
+            // any math on the indices to be replaced.  If we go in ascending order
+            // then the indices we stored above won't work any more.
             foreach (var tagLocation in tagSubstitutionLocations.OrderByDescending(i => i.Key))
             {
+                // grab local vars from the Dictionary we populated above.
                 var startIndexToReplace = tagLocation.Key;
                 var tuple = tagLocation.Value;
                 var numCharsToRemove = tuple.Item1;
                 var tagToInsert = tuple.Item2;
 
+                // remove the *,**,_, or __.  The dictionary entry tells us how many to remove
                 sbToken.Remove(startIndexToReplace, numCharsToRemove);
+
+                // insert the html <em>, </em>, <strong>, or </strong> tag
                 sbToken.Insert(startIndexToReplace, tagToInsert);
             }
 
