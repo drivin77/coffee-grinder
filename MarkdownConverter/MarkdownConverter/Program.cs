@@ -26,7 +26,7 @@ namespace MarkdownConverter
             if (args.Length != 2 || (args.Length == 1 && args[0].Equals("?")))
             {
                 Console.WriteLine("Usage: MarkdownConverter <MarkdownFile> <HTMLFile>");
-                Console.WriteLine(" ");
+                Console.WriteLine();
                 Console.WriteLine("  <MarkdownFile>  path including filename of markdown file to read.");
                 Console.WriteLine("  <HTMLFile>      path including filename of html output file. Will be overwritten.");
 
@@ -37,21 +37,34 @@ namespace MarkdownConverter
                 
             try
             {
+                // get the command line args
                 var mdFile = args[0];
                 var htmlFile = args[1];
 
+                // make sure the input file exists
                 if (! File.Exists(mdFile))
                     throw new Exception(String.Format("Input file couldn't be found! ({0})", mdFile));
 
+                // try to create the directory for the output file if it 
+                // doesn't already exist.
                 var outFileDir = Path.GetDirectoryName(htmlFile);
-                if (! string.IsNullOrWhiteSpace(outFileDir) && ! Directory.Exists(outFileDir))
-                    throw new Exception(
-                        String.Format(
-                            "Output file specified ('{0}') can't be written to a directory which " +
-                            "doesn't yet exist",
-                            htmlFile
-                        )
-                    );
+                if (!string.IsNullOrWhiteSpace(outFileDir) && !Directory.Exists(outFileDir))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(outFileDir);
+                    }
+                    catch (Exception e)
+                    {                           
+                        throw new Exception(
+                            String.Format(
+                                "Couldn't create directory ('{0}') for html output file: ('{1}')",
+                                outFileDir,
+                                e.Message
+                            )
+                        );
+                    }
+                }
                 
                 // the main function to kick off the conversion
                 MarkdownToHtml(mdFile, htmlFile);
@@ -87,7 +100,7 @@ namespace MarkdownConverter
                 {"###",     new HtmlTag("<h3>", "</h3>")},
                 {"####",    new HtmlTag("<h4>", "</h4>")},
                 {"#####",   new HtmlTag("<h5>", "</h5>")},
-                {"#######", new HtmlTag("<h6>", "</h6>")}
+                {"######",  new HtmlTag("<h6>", "</h6>")}
             };
 
             var markupFile = new StreamReader(markdownFilePath);
@@ -114,7 +127,7 @@ namespace MarkdownConverter
                 // match all headers and replace in-place file-wide
                 var matches = Regex.Matches(
                     fileString,
-                    @"^(#{1,6})\s*(.*?)\s*#*\s*(?:\n|$)",
+                    @"^(#{1,6})\s*(.*?)\s*#*\s*(?:\r\n?|\n|$)",
                     RegexOptions.Multiline
                 );
 
@@ -143,7 +156,7 @@ namespace MarkdownConverter
                 }
 
                 // split file into paragraph tokens
-                var tokens = Regex.Split(fileString, "\r\n\r\n");
+                var tokens = Regex.Split(fileString, "\r\n?\r\n?|\n\n");
 
                 foreach (var token in tokens)
                 {
@@ -173,7 +186,7 @@ namespace MarkdownConverter
                 case '<':
                     // check if there are non-blank lines after the header and process the next
                     // line on as a new paragraph
-                    var newlineRegex = new Regex(@"\r\n");
+                    var newlineRegex = new Regex("\r\n?|\n");
                     var hiddenParagraphInHeaderParagraph = newlineRegex.Split(token, 2);
                     if (hiddenParagraphInHeaderParagraph.Length > 1)
                     {
@@ -242,7 +255,7 @@ namespace MarkdownConverter
             htmlFile.WriteLine(outerListTag.OpenTag);
 
             // go through each list item in the paragraph, allowing for multi-line list formatting
-            foreach (var listItem in Regex.Split(token, "\r\n" + listItemRegex, RegexOptions.Multiline))
+            foreach (var listItem in Regex.Split(token, "\r\n?|\n" + listItemRegex, RegexOptions.Multiline))
             {
                 // remove list marker
                 var replacement = Regex.Replace(listItem, listItemRegex, "");
@@ -252,7 +265,7 @@ namespace MarkdownConverter
                 replacement = replacement.Insert(replacement.Length, _listItemTag.CloseTag);
 
                 // remove any white space in front of new lines
-                replacement = Regex.Replace(replacement, @"\r\n\s{1,3}", "\r\n");
+                replacement = Regex.Replace(replacement, @"(\r\n?|\n)\s{1,3}", "$1");
 
                 // encode any in-lines in the list
                 ParseAndWriteInlines(replacement, htmlFile);
