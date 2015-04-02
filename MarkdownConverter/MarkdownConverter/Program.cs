@@ -276,17 +276,87 @@ namespace MarkdownConverter
             htmlFile.Write(outerListTag.CloseTag);
         }
 
-        private static void ParseAndWriteInlinesRecursive(
-            string token,
-            int tokenIndex,
-            Dictionary<int, Tuple<int, string>> tagLocations,
-            int underscoreEmFoundAt,
-            int starEmFoundAt,
-            int doubleUnderscoreStrongFoundAt,
-            int doubleStarStrongFound
-            )
+        public class InlineToken
         {
-            // todo: not sure we need this function
+            public int StrIndex { get; private set; }
+            public TokenType Type { get; private set; }
+
+            public enum TokenType
+            {
+                Star,
+                DoubleStar,
+                Underscore,
+                DoubleUnderscore
+            }
+
+            public InlineToken(int strIndex, TokenType type)
+            {
+                StrIndex = strIndex;
+                Type = type;
+            }
+        }
+
+        public class InlineTokenizer
+        {
+            public List<InlineToken> InlineTokens { get; private set; }
+
+            public InlineTokenizer()
+            {
+                InlineTokens = new List<InlineToken>();
+            }
+
+            public void Tokenize(string s)
+            {
+            //    TokenizeStar(s);
+                TokenizeDouble(s, InlineToken.TokenType.DoubleStar);
+              //  TokenizeUnderscore(s);
+                TokenizeDouble(s, InlineToken.TokenType.DoubleUnderscore);
+
+                InlineTokens = InlineTokens.OrderBy(x => x.StrIndex).ToList();
+            }
+
+            private void TokenizeDouble(string s, InlineToken.TokenType type)
+            {
+                var lastCharMatched = false;
+
+                var chToLookFor = 
+                    (type == InlineToken.TokenType.DoubleUnderscore) 
+                    ? '_' 
+                    : '*';
+
+                for (var i = 0; i < s.Length; ++i)
+                {
+                    if (s[i].Equals(chToLookFor))
+                    {
+                        // found double _ or double *
+                        if (lastCharMatched)
+                        {
+                            InlineTokens.Add(new InlineToken(i - 1, type));
+                            lastCharMatched = false;
+                        }
+
+                        else
+                        {
+                            lastCharMatched = true;
+                        }
+                    }
+                }
+            }
+
+            private void TokenizeUnderscore(string s)
+            {
+                throw new NotImplementedException();
+            }
+
+            private void TokenizeDoubleStar(string s)
+            {
+                throw new NotImplementedException();
+            }
+
+            private void TokenizeStar(string s)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         /// <summary>
@@ -296,6 +366,9 @@ namespace MarkdownConverter
         /// <param name="htmlFile">the output file to write to</param>
         private static void ParseAndWriteInlines(string token, StreamWriter htmlFile)
         {
+            var tokenizer = new InlineTokenizer();
+            tokenizer.Tokenize(token);
+
             // keep a list of indices in the string where we need to insert the tag.
             // key: index into input string to begin replacement at
             // value: tuple of 2: number of characers to remove from index, tag to insert at index
@@ -315,7 +388,7 @@ namespace MarkdownConverter
             // ok, not very pretty logic here, but this is the only place we need to get messy.
             // build up the tagSubstitutionLocations dictionary with valid indices of
             // *, **, _, __ tokens.
-          /*  for (var i = 0; i < token.Length; ++i)
+            for (var i = 0; i < token.Length; ++i)
             {
                 switch (token[i])
                 {
@@ -421,7 +494,7 @@ namespace MarkdownConverter
                         }
                         break;
                 }
-            }*/
+            }
 
             // no <em> or <strong> found
             if (tagSubstitutionLocations.Count == 0)
