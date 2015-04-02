@@ -276,89 +276,6 @@ namespace MarkdownConverter
             htmlFile.Write(outerListTag.CloseTag);
         }
 
-        public class InlineToken
-        {
-            public int StrIndex { get; private set; }
-            public TokenType Type { get; private set; }
-
-            public enum TokenType
-            {
-                Star,
-                DoubleStar,
-                Underscore,
-                DoubleUnderscore
-            }
-
-            public InlineToken(int strIndex, TokenType type)
-            {
-                StrIndex = strIndex;
-                Type = type;
-            }
-        }
-
-        public class InlineTokenizer
-        {
-            public List<InlineToken> InlineTokens { get; private set; }
-
-            public InlineTokenizer()
-            {
-                InlineTokens = new List<InlineToken>();
-            }
-
-            public void Tokenize(string s)
-            {
-            //    TokenizeStar(s);
-                TokenizeDouble(s, InlineToken.TokenType.DoubleStar);
-              //  TokenizeUnderscore(s);
-                TokenizeDouble(s, InlineToken.TokenType.DoubleUnderscore);
-
-                InlineTokens = InlineTokens.OrderBy(x => x.StrIndex).ToList();
-            }
-
-            private void TokenizeDouble(string s, InlineToken.TokenType type)
-            {
-                var lastCharMatched = false;
-
-                var chToLookFor = 
-                    (type == InlineToken.TokenType.DoubleUnderscore) 
-                    ? '_' 
-                    : '*';
-
-                for (var i = 0; i < s.Length; ++i)
-                {
-                    if (s[i].Equals(chToLookFor))
-                    {
-                        // found double _ or double *
-                        if (lastCharMatched)
-                        {
-                            InlineTokens.Add(new InlineToken(i - 1, type));
-                            lastCharMatched = false;
-                        }
-
-                        else
-                        {
-                            lastCharMatched = true;
-                        }
-                    }
-                }
-            }
-
-            private void TokenizeUnderscore(string s)
-            {
-                throw new NotImplementedException();
-            }
-
-            private void TokenizeDoubleStar(string s)
-            {
-                throw new NotImplementedException();
-            }
-
-            private void TokenizeStar(string s)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
         /// <summary>
         /// Inlines are: emphasis (* or _) strong (** or __)
         /// </summary>
@@ -367,150 +284,63 @@ namespace MarkdownConverter
         private static void ParseAndWriteInlines(string token, StreamWriter htmlFile)
         {
             var tokenizer = new InlineTokenizer();
-            tokenizer.Tokenize(token);
+            tokenizer.Tokenize(token, _strongTag, _emTag);
 
-            // keep a list of indices in the string where we need to insert the tag.
-            // key: index into input string to begin replacement at
-            // value: tuple of 2: number of characers to remove from index, tag to insert at index
-            var tagSubstitutionLocations = new Dictionary<int, Tuple<int, string>>();
+           // keep a list of indices in the string where we need to insert the tag.
+           // key: index into input string to begin replacement at
+           // value: tuple of 2: number of characers to remove from index, tag to insert at index
+           var tagSubstitutionLocations = new Dictionary<int, Tuple<int, string>>();
+           var closeTagLocations = new List<int>();
 
-            // state variables
-            var underscoreEmFoundAt = -1;
-            var starEmFoundAt = -1;
-            var doubleUnderscoreStrongFoundAt = -1;
-            var doubleStarStrongFound = -1;  
-          
-            // todo: need to fix the case where we have the same valid symbols contained in each other
-            // ex: **blah *blah* blah** - this doesn't work
-            // ex: __blah *blah* blah__ - but this does
-            // also for some reason __blah _blah_ blah__ works  figure this out!!
+           // iterate through tokens found determining if they are valid <em> or <strong> tags
+           for (var i = 0; i < tokenizer.InlineTokens.Count; ++i)
+           {
+                var inlineToken = tokenizer.InlineTokens[i];
+                var tag = inlineToken.Type.Item2;
 
-            // ok, not very pretty logic here, but this is the only place we need to get messy.
-            // build up the tagSubstitutionLocations dictionary with valid indices of
-            // *, **, _, __ tokens.
-            for (var i = 0; i < token.Length; ++i)
-            {
-                switch (token[i])
+                if (!closeTagLocations.Contains(i) && tokenizer.IsOpenTokenValid(token, inlineToken))
                 {
-                    // handle _ and __
-                    case '_':
-                        if ((underscoreEmFoundAt >= 0 || doubleUnderscoreStrongFoundAt >= 0) && i != 0 && !token[i - 1].Equals(' '))
-                        {
-                            if (i < token.Length - 1 && token[i + 1].Equals('_'))
-                            {
-                                tagSubstitutionLocations[doubleUnderscoreStrongFoundAt] = new Tuple<int, string>(2, _strongTag.OpenTag);
-                                tagSubstitutionLocations[i] = new Tuple<int, string>(2, _strongTag.CloseTag);
-                                ++i;
-                                doubleUnderscoreStrongFoundAt = -1;
-                            }
+                    int indexFound;
+                    // if we have a valid opening token, we assume there is a valid closing 
+                    // token according to the problem description.
+                    var closingToken = tokenizer.FindNextOfTheSameToken(i, inlineToken, out indexFound);
 
-                            else 
-                            {
-                                tagSubstitutionLocations[underscoreEmFoundAt] = new Tuple<int, string>(1, _emTag.OpenTag);
-                                tagSubstitutionLocations[i] = new Tuple<int, string>(1, _emTag.CloseTag);
-                            
-                                underscoreEmFoundAt = -1;     
-                            }
-                                                  
-                        }
-                        else
-                        {
-                            if (i < token.Length - 1)
-                            {
-                                if (!token[i + 1].Equals(' '))
-                                {
-                                    // escaped _, do nothing
-                                    if (i != 0 && token[i - 1].Equals('\\'))
-                                    {
-                                        // remove the '\' character
-                                        tagSubstitutionLocations[i - 1] = new Tuple<int, string>(1, "");
-                                        break;
-                                    }
-
-                                    if (token[i + 1].Equals('_') && i < token.Length - 2 && !token[i + 2].Equals(' '))
-                                    {
-                                        doubleUnderscoreStrongFoundAt = i;
-                                        ++i;
-                                    }
-
-                                    else
-                                    {
-                                        underscoreEmFoundAt = i;
-                                    }
-                                }
-                                    
-                            }
-                        }
-                        break;
-
-                    // handle * and **
-                    case '*':
-                        if ((starEmFoundAt >= 0 || doubleStarStrongFound >= 0) && i != 0 && !token[i - 1].Equals(' '))
-                        {
-                            if (i < token.Length - 1 && token[i + 1].Equals('*'))
-                            {
-                                tagSubstitutionLocations[doubleStarStrongFound] = new Tuple<int, string>(2, _strongTag.OpenTag);
-                                tagSubstitutionLocations[i] = new Tuple<int, string>(2, _strongTag.CloseTag);
-                                ++i;
-                                doubleStarStrongFound = -1;
-                            }
-
-                            else if (doubleStarStrongFound == -1)
-                            {
-                                tagSubstitutionLocations[starEmFoundAt] = new Tuple<int, string>(1, _emTag.OpenTag);
-                                tagSubstitutionLocations[i] = new Tuple<int, string>(1, _emTag.CloseTag);
-                               
-                                starEmFoundAt = -1;     
-                            }
-                                                  
-                        }
-                        else
-                        {
-                            if (i < token.Length - 1)
-                            {
-                                // begin token must be touching a character to its right
-                                if (!token[i + 1].Equals(' '))
-                                {
-                                    // escaped *, do nothing
-                                    if (i != 0 && token[i - 1].Equals('\\'))
-                                    {
-                                        // remove the '\' character
-                                        tagSubstitutionLocations[i - 1] = new Tuple<int, string>(1, "");
-                                        break;
-                                    }
-
-                                    if (token[i + 1].Equals('*') && i < token.Length - 2 && !token[i + 2].Equals(' '))
-                                    {
-                                        doubleStarStrongFound = i;
-                                        ++i;
-                                    }
-
-                                    else
-                                    {
-                                        starEmFoundAt = i;
-                                    }
-                                }                                   
-                            }
-                        }
-                        break;
+                    while (!tokenizer.IsCloseTokenValid(token, closingToken))
+                    {
+                        closingToken = tokenizer.FindNextOfTheSameToken(i, inlineToken, out indexFound);
+                    }
+                    var numCharsToReplace = 
+                    (
+                        inlineToken.Type.Item1 == InlineToken.TokenType.DoubleStar
+                        || inlineToken.Type.Item1 == InlineToken.TokenType.DoubleUnderscore
+                    )
+                    ? 2
+                    : 1;
+                    
+                    tagSubstitutionLocations.Add(inlineToken.StrIndex, new Tuple<int, string>(numCharsToReplace, tag.OpenTag));
+                    tagSubstitutionLocations.Add(closingToken.StrIndex, new Tuple<int, string>(numCharsToReplace, tag.CloseTag));
+                     
+                    closeTagLocations.Add(indexFound);
                 }
-            }
+           }
 
-            // no <em> or <strong> found
-            if (tagSubstitutionLocations.Count == 0)
-            {
-                htmlFile.Write(token);
-                return;
-            }              
+           // no <em> or <strong> found
+           if (tagSubstitutionLocations.Count == 0)
+           {
+               htmlFile.Write(token);
+               return;
+           }             
 
             // found <em> and/or <strong>, so remove the *,**,_,__
             // chars and replace with <em> and <strong>
             var sbToken = new StringBuilder(token);
 
+            var descendingStringPositions = tagSubstitutionLocations.OrderByDescending(i => i.Key);
+
             // go backwards through the tokens so we don't have to do
             // any math on the indices to be replaced.  If we go in ascending order
             // then the indices we stored above won't work any more.
-            foreach (var tagLocation in tagSubstitutionLocations.OrderByDescending(i => i.Key))
+            foreach (var tagLocation in descendingStringPositions)
             {
                 // grab local vars from the Dictionary we populated above.
                 var startIndexToReplace = tagLocation.Key;
