@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -275,6 +276,19 @@ namespace MarkdownConverter
             htmlFile.Write(outerListTag.CloseTag);
         }
 
+        private static void ParseAndWriteInlinesRecursive(
+            string token,
+            int tokenIndex,
+            Dictionary<int, Tuple<int, string>> tagLocations,
+            int underscoreEmFoundAt,
+            int starEmFoundAt,
+            int doubleUnderscoreStrongFoundAt,
+            int doubleStarStrongFound
+            )
+        {
+            // todo: not sure we need this function
+        }
+
         /// <summary>
         /// Inlines are: emphasis (* or _) strong (** or __)
         /// </summary>
@@ -284,22 +298,28 @@ namespace MarkdownConverter
         {
             // keep a list of indices in the string where we need to insert the tag.
             // key: index into input string to begin replacement at
-            // value: number of characers to remove from index and tag to insert there
+            // value: tuple of 2: number of characers to remove from index, tag to insert at index
             var tagSubstitutionLocations = new Dictionary<int, Tuple<int, string>>();
 
             // state variables
             var underscoreEmFoundAt = -1;
             var starEmFoundAt = -1;
             var doubleUnderscoreStrongFoundAt = -1;
-            var doubleStarStrongFound = -1;            
+            var doubleStarStrongFound = -1;  
+          
+            // todo: need to fix the case where we have the same valid symbols contained in each other
+            // ex: **blah *blah* blah** - this doesn't work
+            // ex: __blah *blah* blah__ - but this does
+            // also for some reason __blah _blah_ blah__ works  figure this out!!
 
             // ok, not very pretty logic here, but this is the only place we need to get messy.
             // build up the tagSubstitutionLocations dictionary with valid indices of
             // *, **, _, __ tokens.
-            for (var i = 0; i < token.Length; ++i)
+          /*  for (var i = 0; i < token.Length; ++i)
             {
                 switch (token[i])
                 {
+                    // handle _ and __
                     case '_':
                         if ((underscoreEmFoundAt >= 0 || doubleUnderscoreStrongFoundAt >= 0) && i != 0 && !token[i - 1].Equals(' '))
                         {
@@ -350,6 +370,7 @@ namespace MarkdownConverter
                         }
                         break;
 
+                    // handle * and **
                     case '*':
                         if ((starEmFoundAt >= 0 || doubleStarStrongFound >= 0) && i != 0 && !token[i - 1].Equals(' '))
                         {
@@ -374,6 +395,7 @@ namespace MarkdownConverter
                         {
                             if (i < token.Length - 1)
                             {
+                                // begin token must be touching a character to its right
                                 if (!token[i + 1].Equals(' '))
                                 {
                                     // escaped *, do nothing
@@ -399,7 +421,7 @@ namespace MarkdownConverter
                         }
                         break;
                 }
-            }
+            }*/
 
             // no <em> or <strong> found
             if (tagSubstitutionLocations.Count == 0)
