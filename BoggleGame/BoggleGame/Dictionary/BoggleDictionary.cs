@@ -68,7 +68,7 @@ namespace BoggleGame.Dictionary
         /// </summary>
         /// <param name="testString">string to test for existance</param>
         /// <returns>true if in dictionary, false otherwise</returns>
-        public Boolean IsWord(String testString)
+        public Boolean IsWord(string testString)
         {
             return testString.Length > 1 && _wordTrie.Get(testString);
         }
@@ -80,7 +80,7 @@ namespace BoggleGame.Dictionary
         /// </summary>
         /// <param name="prefix">String to check for potential word existance</param>
         /// <returns>true if prefix could be a word, false otherwise</returns>
-        public bool IsStartOfWord(String prefix)
+        public bool IsStartOfWord(string prefix)
         {
             return _wordTrie.IsStartOfKey(prefix);
         }

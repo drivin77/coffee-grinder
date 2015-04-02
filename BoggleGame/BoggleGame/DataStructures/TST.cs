@@ -30,7 +30,7 @@ namespace BoggleGame.DataStructures
         /// </summary>
         private class Node
         {           
-            public Char Ch { get; set; }
+            public char Ch { get; set; }
             public short? Value {  get;  set; }
             public Node LeftChild {  get;  set; }
             public Node MiddleChild {  get;  set; }
@@ -42,7 +42,7 @@ namespace BoggleGame.DataStructures
         /// </summary>
         /// <param name="prefix">are the characters in this string valid in the TST?</param>
         /// <returns>true if the characters exist as part of a key, false otherwise.</returns>
-        public bool IsStartOfKey(String prefix)
+        public bool IsStartOfKey(string prefix)
         {
             if (String.IsNullOrWhiteSpace(prefix))
                 return false;
@@ -59,7 +59,7 @@ namespace BoggleGame.DataStructures
         /// </summary>
         /// <param name="key">string to search for in the trie</param>
         /// <returns>true if key exists, false otherwise</returns>
-        public bool Get (String key)
+        public bool Get (string key)
         {
             if (String.IsNullOrWhiteSpace(key))
                 return false;
@@ -74,7 +74,7 @@ namespace BoggleGame.DataStructures
             return getNode.Value != null;
         }
 
-        private Node Get (Node root, String key, Int32 idx)
+        private Node Get (Node root, string key, int idx)
         {
             if (String.IsNullOrWhiteSpace(key))
                 return null;
@@ -118,7 +118,7 @@ namespace BoggleGame.DataStructures
         /// Puts key into the trie, if it's not there already
         /// </summary>
         /// <param name="key">string to be inserted</param>
-        public void Put (String key)
+        public void Put (string key)
         {
             if (String.IsNullOrWhiteSpace(key))
                 throw new ArgumentException();
@@ -127,7 +127,7 @@ namespace BoggleGame.DataStructures
             _root = Put(_root, key, 0);
         }
 
-        private static Node Put (Node root, String key, Int32 idx)
+        private static Node Put (Node root, string key, int idx)
         {
             var curChar = key[idx];
 

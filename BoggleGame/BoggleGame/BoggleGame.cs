@@ -39,6 +39,7 @@ namespace BoggleGame
                 Console.WriteLine("               | c d |");
                 Console.WriteLine("               then board will be 'abcd'");
 
+                Console.WriteLine("Press any key to exit.");
                 Console.ReadKey();
 
                 return;
@@ -51,7 +52,7 @@ namespace BoggleGame
 
                 _diction = new BoggleDictionary();
                 Console.WriteLine("Dictionary name: '{0}'", _diction.DictionaryFileName);
-                Console.WriteLine("Num. words in dictionary: {0}", _diction.NumWords);
+                Console.WriteLine("Words in dictionary: {0}", _diction.NumWords);
 
                 _wordsFound = new ArrayList();
                 _duplicateTrie = new TST();
@@ -203,7 +204,7 @@ namespace BoggleGame
         /// </summary>
         /// <param name="curChar">current char to remove from the currentWord</param>
         /// <param name="currentWord">the word to remove characters from.  Will be modified.</param>
-        private static void RemoveChars(String curChar, StringBuilder currentWord)
+        private static void RemoveChars(string curChar, StringBuilder currentWord)
         {
             var removeChars = (curChar.Equals("qu")) ? 2 : 1;
             currentWord.Remove(currentWord.Length - removeChars, removeChars);
