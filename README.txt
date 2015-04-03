@@ -1,4 +1,4 @@
-Readme for Daniel Rivin's implementation of Bungie's programmer test.
+Readme for Daniel Rivin's implementation of coffee-grinder!.
 
 Please view individual readme files within each project folder for specific details on that problem.
 
