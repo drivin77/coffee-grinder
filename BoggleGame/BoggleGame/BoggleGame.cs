@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Text;
-using BoggleGame.DataStructures;
 using BoggleGame.Dictionary;
 using BoggleGame.Game;
 
@@ -18,13 +17,7 @@ namespace BoggleGame
 
         private static BoggleBoard _theBoard;
 
-        private static ArrayList _wordsFound;
-
-        /// <summary>
-        /// keep a TST around to quickly look up words we've found
-        /// so we don't store duplicates.
-        /// </summary>
-        private static TST _duplicateTrie;
+        private static List<string> _wordsFoundUniqueOrdered;
 
         private static void Main(string[] args)
         {
@@ -54,25 +47,18 @@ namespace BoggleGame
                 Console.WriteLine("Dictionary name: '{0}'", _diction.DictionaryFileName);
                 Console.WriteLine("Words in dictionary: {0}", _diction.NumWords);
 
-                _wordsFound = new ArrayList();
-                _duplicateTrie = new TST();
+                _wordsFoundUniqueOrdered = new List<string>();
 
                 _theBoard = new BoggleBoard(dimension, boardInput);
                 _theBoard.PrintBoard();
                 
                 FindWords();
 
-                if (_wordsFound.Count > 0)
+                if (_wordsFoundUniqueOrdered.Count > 0)
                 {
-                    // sort words found to make output neater.
-                    // ArrayList uses QuickSort, so no concern with speed of sort.
-                    _wordsFound.Sort();
-
-                    Console.WriteLine("{0} words found.", _wordsFound.Count);
-                    foreach (var word in _wordsFound)
-                    {
+                    Console.WriteLine("{0} words found.", _wordsFoundUniqueOrdered.Count);
+                    foreach (var word in _wordsFoundUniqueOrdered)
                         Console.WriteLine(word);
-                    }
                 }
 
                 else
@@ -142,7 +128,10 @@ namespace BoggleGame
 
             // quick exit case if the current string isn't a word
             var curWordStr = currentWord.ToString();
-            if (!_diction.IsStartOfWord(curWordStr))
+
+            // don't check the trie if the str length is only one because that
+            // case is always true.
+            if (curWordStr.Length > 1 && !_diction.IsStartOfWord(curWordStr))
             {
                 RemoveChars(_theBoard[j, i], currentWord);
                 visited[j, i] = false;
@@ -150,14 +139,7 @@ namespace BoggleGame
             }
 
             if (_diction.IsWord(curWordStr))
-            {
-                // check for duplicates and ignore the word if we've already seen it
-                if (!_duplicateTrie.Get(curWordStr))
-                {
-                    _wordsFound.Add(curWordStr);
-                    _duplicateTrie.Put(curWordStr);
-                }
-            }
+                AddUniqueOrderedWord(curWordStr);
                 
             visited[j, i] = true;
 
@@ -196,6 +178,28 @@ namespace BoggleGame
             // "rewind" the state to continue searching
             RemoveChars(_theBoard[j,i], currentWord);
             visited[j, i] = false;
+        }
+
+        /// <summary>
+        /// Add word to _wordsFoundUniqueOrdered, keeping _wordsFoundUniqueOrdered ordered 
+        /// and not allowing any duplicates.  We do this by BinarySearch-ing for an existing
+        /// word in the list and do nothing if it exists, otherwise we insert
+        /// the new word at the index we get from List<T>.BinarySearch().
+        /// BinarySearch() returns a negative value if the item doesn't exist, which is
+        /// the binary compliment of the index of the next element that is larger
+        /// than word.
+        /// </summary>
+        /// <param name="word">a full word found in our traversal</param>
+        private static void AddUniqueOrderedWord(string word)
+        {
+            int inverseIndex;
+
+            // if inverseIndex is >= 0, then we have a duplicate word.
+            // Simply do nothing in this case.
+            if ((inverseIndex = _wordsFoundUniqueOrdered.BinarySearch(word)) < 0)
+            {
+                _wordsFoundUniqueOrdered.Insert(~inverseIndex, word);
+            }
         }
 
         /// <summary>
