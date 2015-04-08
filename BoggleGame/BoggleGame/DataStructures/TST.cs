@@ -30,11 +30,21 @@ namespace BoggleGame.DataStructures
         /// </summary>
         private class Node
         {           
-            public char Ch { get; set; }
             public short? Value {  get;  set; }
             public Node LeftChild {  get;  set; }
             public Node MiddleChild {  get;  set; }
             public Node RightChild {  get;  set; }
+            public char Ch
+            {
+                get { return _ch; }
+            }
+
+            public Node(char ch)
+            {
+                _ch = ch;
+            }
+
+            private readonly char _ch;          
         }
 
         /// <summary>
@@ -100,7 +110,6 @@ namespace BoggleGame.DataStructures
                 "key");
             }
 
-
             if (curChar < root.Ch)
                 return Get(root.LeftChild, key, idx);
 
@@ -135,7 +144,7 @@ namespace BoggleGame.DataStructures
             var curChar = key[idx];
 
             if (root == null)
-                root = new Node {Ch = curChar};
+                root = new Node(curChar);
 
             if (curChar < root.Ch)
                 root.LeftChild = Put(root.LeftChild, key, idx);

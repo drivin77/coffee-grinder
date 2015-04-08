@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using BoggleGame.DataStructures;
 
 namespace BoggleGame.Dictionary
@@ -43,22 +44,20 @@ namespace BoggleGame.Dictionary
                     DictionaryFileName)
                 );
 
-            foreach (var word in df.Words)
+            foreach (var word in df.Words.Where(word => word.Length >= 3))
             {
-                if (word.Length >= 3)
+                try
                 {
-                    try
-                    {
-                        _wordTrie.Put(word);
-                    }
-                    catch (ArgumentException e)
-                    {
-                        const string message = "Unacceptable word found in dictionary file. " +
-                                               "See inner-exception for details.";
-                        throw new ArgumentException(message, e);
-                    }
+                    // we're only interested in lower case letters, which should help save some
+                    // memory in the trie
+                    _wordTrie.Put(word.ToLower());
                 }
-                    
+                catch (ArgumentException e)
+                {
+                    const string message = "Unacceptable word found in dictionary file. " +
+                                           "See inner-exception for details.";
+                    throw new ArgumentException(message, e);
+                }
             }
         }
 

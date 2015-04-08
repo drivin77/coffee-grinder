@@ -50,6 +50,11 @@ namespace BoggleGame.Dictionary
                 // the file is read in sections so we don't have to
                 // load a large dictionary all at once.
                 _dictionaryFileLines = File.ReadLines(fileName);
+
+                // randomizing the IEnumerable doesn't force all files to be read into memory
+                // at once.  Enumerating through the file will still "stream" us the words.
+                var rand = new Random();
+                _dictionaryFileLines = _dictionaryFileLines.OrderBy(x => rand.Next());
             }
 
             catch (FileNotFoundException)
