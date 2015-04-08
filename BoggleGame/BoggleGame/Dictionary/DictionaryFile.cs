@@ -9,13 +9,19 @@ namespace BoggleGame.Dictionary
     /// Opens file on disk containing dictionary words (one per line)
     /// and exposes functionality to retrieve each word.
     /// 
+    /// I'm assuming the file containing the dictionary has
+    /// no repeating words.
+    /// 
     /// It's important to randomize the insert order of the words into the
     /// TST, so we'll randomize the order of the words to get a well-balanced
-    /// trie
+    /// trie.
     /// </summary>
     public class DictionaryFile
     {
-        private readonly List<string> _dictionaryFileLines;
+        // store the dictionary words as an IEnumerable, so we don't read the 
+        // entire file in to memory.  This acts as a stream, so we only keep
+        // a small number of words in memory at once.
+        private readonly IEnumerable<string> _dictionaryFileLines;
 
         /// <summary>
         /// Allows you to iterate through all words in the file
@@ -27,8 +33,9 @@ namespace BoggleGame.Dictionary
             get
             {
                 // this is a linq shortcut which allows us to return 
-                // one element at a time.  Basically the List<string>
-                // is auto-converted to an IEnumerable<String>
+                // one word at a time.  The entire file isn't in memory,
+                // instead we stream the file via the IEnumerator and
+                // ReadLines function.
                 return _dictionaryFileLines;
             }
         }
@@ -37,13 +44,12 @@ namespace BoggleGame.Dictionary
         {
             try
             {
-                // we need to randomize the words in the dictionary
-                // for a well-balanced trie
-                _dictionaryFileLines = File.ReadAllLines(fileName).ToList();
-
-                // easy way to "shuffle" the word array
-                var r = new Random();
-                _dictionaryFileLines = _dictionaryFileLines.OrderBy(x => r.Next()).ToList();
+                // File.ReadLines returns an IEnumerable, which is faster
+                // and more memory efficient than allocating memory
+                // for the entire file at once.  As we enumerate, 
+                // the file is read in sections so we don't have to
+                // load a large dictionary all at once.
+                _dictionaryFileLines = File.ReadLines(fileName);
             }
 
             catch (FileNotFoundException)

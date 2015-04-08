@@ -121,22 +121,18 @@ namespace BoggleGame.DataStructures
         public void Put (string key)
         {
             if (String.IsNullOrWhiteSpace(key))
-                throw new ArgumentException();
+                throw new ArgumentException("Key can't be null or just be white space");
 
+            // I assume a dictionary file of unique words, so we'll increment the
+            // count when we find non-null or whitespace only words.
             ++NumElements;
+
             _root = Put(_root, key, 0);
         }
 
         private static Node Put (Node root, string key, int idx)
         {
             var curChar = key[idx];
-
-            if (! Char.IsLetter(curChar))
-                throw new ArgumentException(
-                    String.Format(
-                        "Can't add a key with non-alphabetic characters ({0})", key),
-                        "key"
-                    );
 
             if (root == null)
                 root = new Node {Ch = curChar};
